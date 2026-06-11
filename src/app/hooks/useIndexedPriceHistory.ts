@@ -21,7 +21,8 @@ export function useIndexedPriceHistory(
   const [data, setData] = useState<IndexedPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const id = symbol ? COIN_MAP[symbol.toUpperCase()] : undefined;
+  const symUpper = symbol ? symbol.toUpperCase() : "";
+  const id = (symbol && symUpper in COIN_MAP) ? COIN_MAP[symUpper as keyof typeof COIN_MAP] : undefined;
   const key = id ? `${id}:${days}:${bucketCount}` : "";
 
   useEffect(() => {

@@ -459,7 +459,7 @@ export function Profile() {
                       fontSize: 12,
                     }}
                     labelStyle={{ color: "#ffffff60" }}
-                    formatter={(val: number) => [`${(val - 100).toFixed(2)}% к базе`, "Индекс"]}
+                    formatter={(val: any) => [`${(Number(val) - 100).toFixed(2)}% к базе`, "Индекс"] as any}
                   />
                   <Area
                     type="monotone"

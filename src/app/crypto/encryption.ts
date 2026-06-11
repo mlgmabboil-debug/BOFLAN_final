@@ -166,7 +166,7 @@ class GroupEncryption {
       
       const encrypted = CryptoJS.AES.encrypt(data, keyWordArray, {
         iv: iv,
-        mode: CryptoJS.mode.GCM,
+        mode: (CryptoJS.mode as any).GCM,
         padding: CryptoJS.pad.Pkcs7
       })
       
@@ -176,7 +176,7 @@ class GroupEncryption {
       // Add authentication tag
       const result = {
         data: combined.toString(CryptoJS.enc.Base64),
-        tag: encrypted.tag?.toString(CryptoJS.enc.Base64) || '',
+        tag: (encrypted as any).tag?.toString(CryptoJS.enc.Base64) || '',
         iv: iv.toString(CryptoJS.enc.Base64)
       }
       
@@ -200,7 +200,7 @@ class GroupEncryption {
         { ciphertext, iv, tag } as any,
         keyWordArray,
         {
-          mode: CryptoJS.mode.GCM,
+          mode: (CryptoJS.mode as any).GCM,
           padding: CryptoJS.pad.Pkcs7
         }
       )

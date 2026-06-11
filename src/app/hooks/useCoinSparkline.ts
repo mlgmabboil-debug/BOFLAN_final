@@ -8,7 +8,8 @@ const TTL = 90_000;
 
 export function useCoinSparkline(symbol: string | undefined, maxPoints = 48): SparkPoint[] {
   const [data, setData] = useState<SparkPoint[]>([]);
-  const id = symbol ? COIN_MAP[symbol.toUpperCase()] : undefined;
+  const symUpper = symbol ? symbol.toUpperCase() : "";
+  const id = (symbol && symUpper in COIN_MAP) ? COIN_MAP[symUpper as keyof typeof COIN_MAP] : undefined;
 
   useEffect(() => {
     if (!id) {

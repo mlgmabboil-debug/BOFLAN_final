@@ -1,6 +1,7 @@
 'use client'
 
 import { createWeb3Modal } from '@web3modal/wagmi/react'
+import { useEffect } from 'react'
 import { WagmiProvider } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, createConfig } from 'wagmi'
@@ -16,13 +17,14 @@ const wagmiConfig = createConfig({
   }), {}),
 })
 
-createWeb3Modal({
-  wagmiConfig,
-  projectId: WALLET_CONNECT_PROJECT_ID,
-  themeMode: 'dark',
-})
-
 export function Web3ModalProvider({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    createWeb3Modal({
+      wagmiConfig,
+      projectId: WALLET_CONNECT_PROJECT_ID,
+      themeMode: 'dark',
+    })
+  }, [])
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
