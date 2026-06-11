@@ -2,6 +2,7 @@
   "name": "react-example",
   "private": true,
   "version": "0.0.0",
+  // Trigger sync
   "type": "module",
   "overrides": {
     "typescript": "6.0.3"
