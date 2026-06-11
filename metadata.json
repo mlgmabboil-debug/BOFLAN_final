@@ -1,0 +1,6 @@
+{
+  "name": "Boflan Platform",
+  "description": "A comprehensive Web3 cryptocurrency social and analysis platform built with React, Tailwind CSS, and Supabase integration, featuring advanced trading charts, community chats, and automated bot marketplaces.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
