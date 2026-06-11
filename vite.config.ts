@@ -37,7 +37,6 @@ export default defineConfig(() => {
     },
     build: {
       rollupOptions: {
-        external: ['@walletconnect/ethereum-provider'],
       },
     },
     server: {
