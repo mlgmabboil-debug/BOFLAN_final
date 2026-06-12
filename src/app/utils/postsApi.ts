@@ -1,6 +1,6 @@
 import { supabase } from "../../lib/supabase";
 import type { FeedPostShape } from "./feedPosts";
-import { USER_POSTS_KEY, normalizeStoredFeedPost } from "./feedPosts";
+import { USER_POSTS_KEY } from "./feedPosts";
 
 type RawPost = {
   id: string;
@@ -75,10 +75,27 @@ export function mapRawPostToFeedShape(raw: RawPost): FeedPostShape | null {
 }
 
 export function getFallbackPosts(): FeedPostShape[] {
-  return [];
+  try {
+    const raw = localStorage.getItem(USER_POSTS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
 }
 
 export async function fetchFeedPosts(): Promise<FeedPostShape[]> {
+  try {
+    const res = await fetch("/api/posts");
+    if (res.ok) {
+      const serverRaw = await res.json();
+      if (Array.isArray(serverRaw)) {
+        return serverRaw.map((p: any) => mapRawPostToFeedShape(p)).filter((p: any): p is FeedPostShape => p !== null);
+      }
+    }
+  } catch (err) {
+    console.warn("fetchFeedPosts from local server failed, trying supabase:", err);
+  }
+
   try {
     let { data: posts, error } = await supabase
       .from('posts')
@@ -149,6 +166,18 @@ export async function fetchPostsByUser(userId: string): Promise<FeedPostShape[]>
   if (!userId) return [];
   
   try {
+    const res = await fetch(`/api/posts?userId=${encodeURIComponent(userId)}`);
+    if (res.ok) {
+      const serverRaw = await res.json();
+      if (Array.isArray(serverRaw)) {
+        return serverRaw.map((p: any) => mapRawPostToFeedShape(p)).filter((p: any): p is FeedPostShape => p !== null);
+      }
+    }
+  } catch (err) {
+    console.warn("fetchPostsByUser from local server failed, trying supabase:", err);
+  }
+
+  try {
     let { data: posts, error } = await supabase
       .from('posts')
       .select(`
@@ -213,6 +242,27 @@ export async function createServerPost(
     timeAgo: "только что",
     liked: false
   };
+
+  try {
+    const res = await fetch("/api/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ post, userId })
+    });
+    if (res.ok) {
+      const serverRaw = await res.json();
+      const mapped = mapRawPostToFeedShape(serverRaw);
+      if (mapped) {
+        // Also save to fallback list for offline resilience
+        const current = getFallbackPosts();
+        const updated = [mapped, ...current];
+        localStorage.setItem(USER_POSTS_KEY, JSON.stringify(updated));
+        return mapped;
+      }
+    }
+  } catch (err) {
+    console.warn("createServerPost on local server failed, trying supabase:", err);
+  }
 
   try {
     // First ensure the user profile exists (required for the guest foreign key constraint)
@@ -321,4 +371,3 @@ export async function createServerPost(
     return mockPost;
   }
 }
-
