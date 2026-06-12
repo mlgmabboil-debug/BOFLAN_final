@@ -5,6 +5,17 @@
 -- (https://supabase.com/dashboard/project/YOUR_PROJECT_ID/sql/new)
 -- to instantly set up your tables, security policies, and storage buckets!
 
+-- OPTIONAL CLEAN SLATE RESET:
+-- If you have conflict errors or want to start fresh (deletes existing mock/live data):
+DROP TABLE IF EXISTS public.notifications CASCADE;
+DROP TABLE IF EXISTS public.portfolio CASCADE;
+DROP TABLE IF EXISTS public.payments CASCADE;
+DROP TABLE IF EXISTS public.group_posts CASCADE;
+DROP TABLE IF EXISTS public.group_members CASCADE;
+DROP TABLE IF EXISTS public.groups CASCADE;
+DROP TABLE IF EXISTS public.posts CASCADE;
+DROP TABLE IF EXISTS public.user_profiles CASCADE;
+
 -- 1. Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -136,28 +147,44 @@ ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.portfolio ENABLE ROW LEVEL SECURITY;
 
 -- 11. Create easy-access default security policies (SELECT all, update by authenticated self/anon fallback)
+DROP POLICY IF EXISTS "Allow All Select user_profiles" ON public.user_profiles;
 CREATE POLICY "Allow All Select user_profiles" ON public.user_profiles FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow All Insert/Update user_profiles" ON public.user_profiles;
 CREATE POLICY "Allow All Insert/Update user_profiles" ON public.user_profiles FOR ALL USING (true);
 
+DROP POLICY IF EXISTS "Allow All Select groups" ON public.groups;
 CREATE POLICY "Allow All Select groups" ON public.groups FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow All Insert/Update groups" ON public.groups;
 CREATE POLICY "Allow All Insert/Update groups" ON public.groups FOR ALL USING (true);
 
+DROP POLICY IF EXISTS "Allow All Select group_members" ON public.group_members;
 CREATE POLICY "Allow All Select group_members" ON public.group_members FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow All Insert/Update group_members" ON public.group_members;
 CREATE POLICY "Allow All Insert/Update group_members" ON public.group_members FOR ALL USING (true);
 
+DROP POLICY IF EXISTS "Allow All Select group_posts" ON public.group_posts;
 CREATE POLICY "Allow All Select group_posts" ON public.group_posts FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow All Insert/Update group_posts" ON public.group_posts;
 CREATE POLICY "Allow All Insert/Update group_posts" ON public.group_posts FOR ALL USING (true);
 
+DROP POLICY IF EXISTS "Allow All Select posts" ON public.posts;
 CREATE POLICY "Allow All Select posts" ON public.posts FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow All Insert/Update posts" ON public.posts;
 CREATE POLICY "Allow All Insert/Update posts" ON public.posts FOR ALL USING (true);
 
+DROP POLICY IF EXISTS "Allow All Select notifications" ON public.notifications;
 CREATE POLICY "Allow All Select notifications" ON public.notifications FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow All Insert/Update notifications" ON public.notifications;
 CREATE POLICY "Allow All Insert/Update notifications" ON public.notifications FOR ALL USING (true);
 
+DROP POLICY IF EXISTS "Allow All Select payments" ON public.payments;
 CREATE POLICY "Allow All Select payments" ON public.payments FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow All Insert/Update payments" ON public.payments;
 CREATE POLICY "Allow All Insert/Update payments" ON public.payments FOR ALL USING (true);
 
+DROP POLICY IF EXISTS "Allow All Select portfolio" ON public.portfolio;
 CREATE POLICY "Allow All Select portfolio" ON public.portfolio FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow All Insert/Update portfolio" ON public.portfolio;
 CREATE POLICY "Allow All Insert/Update portfolio" ON public.portfolio FOR ALL USING (true);
 
 -- 12. Automatically provision the storage bucket for image uploads
@@ -167,6 +194,9 @@ VALUES ('post-images', 'post-images', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Storage Row Level Security (RLS) policies for image file uploading and reading
+DROP POLICY IF EXISTS "Aesthetic Public Image Read" ON storage.objects;
 CREATE POLICY "Aesthetic Public Image Read" ON storage.objects FOR SELECT USING (bucket_id = 'post-images');
+DROP POLICY IF EXISTS "Aesthetic Public Image Insert" ON storage.objects;
 CREATE POLICY "Aesthetic Public Image Insert" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'post-images');
+DROP POLICY IF EXISTS "Aesthetic Public Image Modify" ON storage.objects;
 CREATE POLICY "Aesthetic Public Image Modify" ON storage.objects FOR UPDATE WITH CHECK (bucket_id = 'post-images');

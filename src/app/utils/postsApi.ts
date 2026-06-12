@@ -1,30 +1,27 @@
-import { projectId, publicAnonKey, isEdgeFunctionOnline } from "../../../utils/supabase/info";
-import { getAccessToken } from "../../lib/supabaseAuth";
+import { supabase } from "../../lib/supabase";
 import type { FeedPostShape } from "./feedPosts";
 import { USER_POSTS_KEY, normalizeStoredFeedPost } from "./feedPosts";
 
-const API_BASE = `https://${projectId}.supabase.co/functions/v1/make-server-6d3e2891`;
-
 type RawPost = {
   id: string;
-  createdAt?: number;
-  userId?: string;
-  user?: FeedPostShape["user"];
+  created_at?: string;
+  user_id?: string;
   coin?: string;
-  coinName?: string;
-  direction?: "LONG" | "SHORT";
+  coin_name?: string;
+  direction?: string;
   target?: string;
   timeframe?: string;
   text?: string;
-  chartData?: { t: number; p: number }[];
+  chart_data?: any;
   images?: string[];
-  currentPrice?: string;
-  priceChange?: string;
+  current_price?: string;
+  price_change?: string;
   positive?: boolean;
   likes?: number;
   comments?: number;
   reposts?: number;
   accuracy?: string;
+  user_profiles?: any;
 };
 
 function formatTimeAgo(ts: number): string {
@@ -39,197 +36,111 @@ function formatTimeAgo(ts: number): string {
 }
 
 export function mapRawPostToFeedShape(raw: RawPost): FeedPostShape | null {
-  if (!raw?.id || !raw.user?.id || !raw.user?.username) return null;
-  const createdAt = raw.createdAt ?? Date.now();
+  if (!raw?.id || !raw.user_id) return null;
+  const createdAtMs = raw.created_at ? new Date(raw.created_at).getTime() : Date.now();
+  
+  const user = raw.user_profiles || {};
+  
   return {
     id: raw.id,
     user: {
-      id: raw.user.id,
-      username: raw.user.username,
-      displayName: raw.user.displayName || raw.user.username,
-      avatar: raw.user.avatar || "",
-      verified: Boolean(raw.user.verified),
-      exchange: raw.user.exchange,
-      winRate: Number(raw.user.winRate) || 0,
-      pnl: raw.user.pnl || "0%",
-      pnlPositive: Boolean(raw.user.pnlPositive),
+      id: raw.user_id,
+      username: user.username || "user",
+      displayName: user.display_name || user.username || "User",
+      avatar: user.avatar_url || "",
+      verified: Boolean(user.verified),
+      exchange: user.exchange || "Binance",
+      winRate: Number(user.win_rate) || 0,
+      pnl: user.pnl || "0%",
+      pnlPositive: Boolean(user.pnl_positive) || true,
     },
     coin: raw.coin || "BTC",
-    coinName: raw.coinName || raw.coin || "BTC",
+    coinName: raw.coin_name || raw.coin || "BTC",
     direction: raw.direction === "SHORT" ? "SHORT" : "LONG",
     target: raw.target || "—",
     timeframe: raw.timeframe || "—",
     text: raw.text || "",
-    chartData: Array.isArray(raw.chartData) ? raw.chartData : [],
+    chartData: Array.isArray(raw.chart_data) ? raw.chart_data : [],
     images: Array.isArray(raw.images) ? raw.images : [],
-    currentPrice: raw.currentPrice || "$0",
-    priceChange: raw.priceChange || "0%",
+    currentPrice: raw.current_price || "$0",
+    priceChange: raw.price_change || "0%",
     positive: Boolean(raw.positive),
     likes: Number(raw.likes) || 0,
     comments: Number(raw.comments) || 0,
     reposts: Number(raw.reposts) || 0,
-    timeAgo: formatTimeAgo(createdAt),
+    timeAgo: formatTimeAgo(createdAtMs),
     accuracy: raw.accuracy || "—",
     liked: false,
   };
 }
 
-async function apiHeaders(): Promise<Record<string, string>> {
-  const token = await getAccessToken();
-  return {
-    Authorization: `Bearer ${token || publicAnonKey}`,
-    Accept: "application/json",
-  };
-}
-
 export function getFallbackPosts(): FeedPostShape[] {
-  let localPosts: FeedPostShape[] = [];
-  try {
-    const raw = JSON.parse(localStorage.getItem(USER_POSTS_KEY) || "[]");
-    if (Array.isArray(raw)) {
-      localPosts = raw
-        .map((x) => normalizeStoredFeedPost(x, []))
-        .filter((x): x is FeedPostShape => x !== null);
-    }
-  } catch (e) {
-    console.error("Failed to parse local posts", e);
-  }
-
-  // Predefined mock posts to make feed gorgeous
-  const defaults: FeedPostShape[] = [
-    {
-      id: "fallback_btc_1",
-      user: {
-        id: "trader_aleks",
-        username: "aleks_crypto",
-        displayName: "Александр (PRO)",
-        avatar: "https://api.dicebear.com/7.x/identicon/svg?seed=aleks",
-        verified: true,
-        exchange: "Binance",
-        winRate: 82,
-        pnl: "+145.4%",
-        pnlPositive: true,
-      },
-      coin: "BTC",
-      coinName: "Bitcoin",
-      direction: "LONG",
-      target: "$102,500",
-      timeframe: "1-2 недели",
-      text: "Биткоин протестировал ключевую зону поддержки $94,000 и сформировал бычий пин-бар на дневном таймфрейме. Ожидаю продолжения восходящего тренда к психологической отметке $100k+ в течение следующих недель. Объемы растут, RSI в нейтральной зоне.",
-      chartData: [
-        { t: 0, p: 94000 }, { t: 1, p: 93800 }, { t: 2, p: 94500 }, 
-        { t: 3, p: 94200 }, { t: 4, p: 95100 }, { t: 5, p: 96000 },
-        { t: 6, p: 95800 }, { t: 7, p: 96400 }, { t: 8, p: 97500 }
-      ],
-      images: [],
-      currentPrice: "$96,400",
-      priceChange: "+2.4%",
-      positive: true,
-      likes: 42,
-      comments: 18,
-      reposts: 7,
-      timeAgo: "2ч назад",
-      accuracy: "82% win",
-      liked: false,
-    },
-    {
-      id: "fallback_eth_1",
-      user: {
-        id: "eth_queen",
-        username: "eth_queen",
-        displayName: "Анна Смирнова",
-        avatar: "https://api.dicebear.com/7.x/identicon/svg?seed=queen",
-        verified: true,
-        exchange: "Bybit",
-        winRate: 74,
-        pnl: "+67.8%",
-        pnlPositive: true,
-      },
-      coin: "ETH",
-      coinName: "Ethereum",
-      direction: "LONG",
-      target: "$3,850",
-      timeframe: "3 дня",
-      text: "Эфир выглядит сильнее остального рынка на фоне ожидания притока ликвидности в L2. Пробой нисходящего клина подтвержден повышенными объемами торгов. Вхожу в лонг со стопом ниже $3,350.",
-      chartData: [
-        { t: 0, p: 3380 }, { t: 1, p: 3360 }, { t: 2, p: 3400 }, 
-        { t: 3, p: 3390 }, { t: 4, p: 3450 }, { t: 5, p: 3490 },
-        { t: 6, p: 3510 }, { t: 7, p: 3480 }
-      ],
-      images: [],
-      currentPrice: "$3,490",
-      priceChange: "+1.2%",
-      positive: true,
-      likes: 19,
-      comments: 5,
-      reposts: 2,
-      timeAgo: "5ч назад",
-      accuracy: "74% win",
-      liked: false,
-    },
-    {
-      id: "fallback_sol_1",
-      user: {
-        id: "whale_vlad",
-        username: "vlad_whale",
-        displayName: "Владислав К.",
-        avatar: "https://api.dicebear.com/7.x/identicon/svg?seed=vlad",
-        verified: false,
-        exchange: "OKX",
-        winRate: 61,
-        pnl: "+24.1%",
-        pnlPositive: true,
-      },
-      coin: "SOL",
-      coinName: "Solana",
-      direction: "SHORT",
-      target: "$180.00",
-      timeframe: "24 часа",
-      text: "Солана перекуплена на 4-часовом графике по индикатору Stochastic RSI. Замечаю формирование дивергенции. Возможна локальная коррекция к уровню поддержки $180 перед новым витком роста.",
-      chartData: [
-        { t: 0, p: 198 }, { t: 1, p: 201 }, { t: 2, p: 199 }, 
-        { t: 3, p: 197 }, { t: 4, p: 195 }, { t: 5, p: 193 },
-        { t: 6, p: 191 }
-      ],
-      images: [],
-      currentPrice: "$193.50",
-      priceChange: "-3.1%",
-      positive: false,
-      likes: 12,
-      comments: 9,
-      reposts: 0,
-      timeAgo: "8ч назад",
-      accuracy: "61% win",
-      liked: false,
-    }
-  ];
-
-  const filteredDefaults = defaults.filter(d => !localPosts.some(lp => lp.id === d.id));
-  return [...localPosts, ...filteredDefaults];
+  return [];
 }
 
 export async function fetchFeedPosts(): Promise<FeedPostShape[]> {
-  const isSupabaseValid = projectId && !projectId.includes("undefined") && projectId !== "";
-  if (!isSupabaseValid || !(await isEdgeFunctionOnline(API_BASE, publicAnonKey))) {
-    return getFallbackPosts();
-  }
-
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    let { data: posts, error } = await supabase
+      .from('posts')
+      .select(`
+        *,
+        user_profiles (
+          user_id,
+          username,
+          display_name,
+          avatar_url,
+          verified
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .limit(50);
 
-    const resp = await fetch(`${API_BASE}/posts`, { 
-      headers: await apiHeaders(),
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-
-    const json = (await resp.json().catch(() => ({}))) as { success?: boolean; posts?: RawPost[] };
-    if (!resp.ok || !json.success || !Array.isArray(json.posts)) {
+    if (error) {
+      if (error.code === 'PGRST200' || error.message?.includes('relationship')) {
+        console.warn("Foreign relationship select failed in fetchFeedPosts, fetching separately...");
+        const { data: postsOnly, error: postsError } = await supabase
+          .from('posts')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50);
+          
+        if (postsError || !postsOnly) {
+          console.error(postsError);
+          return getFallbackPosts();
+        }
+        
+        const userIds = Array.from(new Set(postsOnly.map((p: any) => p.user_id).filter(Boolean)));
+        if (userIds.length > 0) {
+          const { data: profiles, error: profilesError } = await supabase
+            .from('user_profiles')
+            .select('user_id, username, display_name, avatar_url, verified')
+            .in('user_id', userIds);
+            
+          if (!profilesError && profiles) {
+            const profileMap = new Map(profiles.map((prof: any) => [prof.user_id, prof]));
+            posts = postsOnly.map((p: any) => ({
+              ...p,
+              user_profiles: profileMap.get(p.user_id) || null
+            }));
+          } else {
+            posts = postsOnly.map((p: any) => ({ ...p, user_profiles: null }));
+          }
+        } else {
+          posts = postsOnly.map((p: any) => ({ ...p, user_profiles: null }));
+        }
+      } else {
+        console.error(error);
+        return getFallbackPosts();
+      }
+    }
+    
+    if (!posts || posts.length === 0) {
       return getFallbackPosts();
     }
-    return json.posts.map(mapRawPostToFeedShape).filter((p): p is FeedPostShape => p !== null);
-  } catch {
+
+    return posts.map((p: any) => mapRawPostToFeedShape(p)).filter((p: any): p is FeedPostShape => p !== null);
+  } catch (err) {
+    console.error("fetchFeedPosts error:", err);
     return getFallbackPosts();
   }
 }
@@ -237,28 +148,55 @@ export async function fetchFeedPosts(): Promise<FeedPostShape[]> {
 export async function fetchPostsByUser(userId: string): Promise<FeedPostShape[]> {
   if (!userId) return [];
   
-  const isSupabaseValid = projectId && !projectId.includes("undefined") && projectId !== "";
-  if (!isSupabaseValid || !(await isEdgeFunctionOnline(API_BASE, publicAnonKey))) {
-    return getFallbackPosts().filter(p => p.user.id === userId);
-  }
-
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    let { data: posts, error } = await supabase
+      .from('posts')
+      .select(`
+        *,
+        user_profiles (
+          user_id,
+          username,
+          display_name,
+          avatar_url,
+          verified
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
-    const resp = await fetch(`${API_BASE}/posts/user/${encodeURIComponent(userId)}`, {
-      headers: await apiHeaders(),
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-
-    const json = (await resp.json().catch(() => ({}))) as { success?: boolean; posts?: RawPost[] };
-    if (!resp.ok || !json.success || !Array.isArray(json.posts)) {
-      return getFallbackPosts().filter(p => p.user.id === userId);
+    if (error) {
+      if (error.code === 'PGRST200' || error.message?.includes('relationship')) {
+        console.warn("Foreign relationship select failed in fetchPostsByUser, fetching separately...");
+        const { data: postsOnly, error: postsError } = await supabase
+          .from('posts')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
+          
+        if (postsError || !postsOnly) {
+          console.error(postsError);
+          return getFallbackPosts().filter((p: FeedPostShape) => p.user.id === userId);
+        }
+        
+        const { data: profiles, error: profilesError } = await supabase
+          .from('user_profiles')
+          .select('user_id, username, display_name, avatar_url, verified')
+          .eq('user_id', userId);
+          
+        const profile = (!profilesError && profiles && profiles.length > 0) ? profiles[0] : null;
+        posts = postsOnly.map((p: any) => ({
+          ...p,
+          user_profiles: profile
+        }));
+      } else {
+        console.error(error);
+        return getFallbackPosts().filter((p: FeedPostShape) => p.user.id === userId);
+      }
     }
-    return json.posts.map(mapRawPostToFeedShape).filter((p): p is FeedPostShape => p !== null);
-  } catch {
-    return getFallbackPosts().filter(p => p.user.id === userId);
+    
+    return posts.map((p: any) => mapRawPostToFeedShape(p)).filter((p: any): p is FeedPostShape => p !== null);
+  } catch (err) {
+    return getFallbackPosts().filter((p: FeedPostShape) => p.user.id === userId);
   }
 }
 
@@ -267,7 +205,7 @@ export async function createServerPost(
   userId: string,
   profileSecret?: string
 ): Promise<FeedPostShape> {
-  const isSupabaseValid = projectId && !projectId.includes("undefined") && projectId !== "";
+
   const mockId = `user_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
   const mockPost: FeedPostShape = {
     ...post,
@@ -276,61 +214,101 @@ export async function createServerPost(
     liked: false
   };
 
-  if (!isSupabaseValid || !(await isEdgeFunctionOnline(API_BASE, publicAnonKey))) {
-    // Save to local storage
-    const current = getFallbackPosts();
-    const updated = [mockPost, ...current];
-    try {
-      localStorage.setItem(USER_POSTS_KEY, JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
-    }
-    return mockPost;
-  }
-
   try {
-    const token = await getAccessToken();
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    // First ensure the user profile exists (required for the guest foreign key constraint)
+    const { error: profileError } = await supabase.from('user_profiles').upsert({
+      user_id: userId,
+      username: post.user.username,
+      display_name: post.user.displayName,
+      avatar_url: post.user.avatar,
+      verified: post.user.verified
+    }, { onConflict: 'user_id' });
+    
+    if (profileError) {
+       console.warn("Could not upsert user profile:", profileError);
+    }
 
-    const resp = await fetch(`${API_BASE}/posts`, {
-      method: "POST",
-      headers: {
-        ...(await apiHeaders()),
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token || publicAnonKey}`,
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        userId,
-        profileSecret,
-        user: post.user,
+    let insertedData: any = null;
+    try {
+      const { data, error } = await supabase.from('posts').insert({
+        user_id: userId,
         coin: post.coin,
-        coinName: post.coinName,
+        coin_name: post.coinName,
         direction: post.direction,
         target: post.target,
         timeframe: post.timeframe,
         text: post.text,
-        chartData: post.chartData,
+        chart_data: post.chartData,
         images: post.images,
-        currentPrice: post.currentPrice,
-        priceChange: post.priceChange,
+        current_price: post.currentPrice,
+        price_change: post.priceChange,
         positive: post.positive,
-        likes: post.likes,
-        comments: post.comments,
-        reposts: post.reposts,
-        accuracy: post.accuracy,
-      }),
-    });
-    clearTimeout(timeoutId);
-
-    const json = (await resp.json().catch(() => ({}))) as { success?: boolean; post?: RawPost; error?: string };
-    if (!resp.ok || !json.success || !json.post) {
-      throw new Error(json.error || "Не удалось опубликовать пост в API");
+        likes: post.likes || 0,
+        comments: post.comments || 0,
+        reposts: post.reposts || 0,
+        accuracy: post.accuracy
+      }).select(`
+        *,
+        user_profiles (
+          user_id,
+          username,
+          display_name,
+          avatar_url,
+          verified
+        )
+      `).single();
+      
+      if (error) {
+        if (error.code === 'PGRST200' || error.message?.includes('relationship')) {
+          console.warn("Foreign relationship select failed inside createServerPost, inserting without join...");
+          const { data: simpleData, error: simpleError } = await supabase.from('posts').insert({
+            user_id: userId,
+            coin: post.coin,
+            coin_name: post.coinName,
+            direction: post.direction,
+            target: post.target,
+            timeframe: post.timeframe,
+            text: post.text,
+            chart_data: post.chartData,
+            images: post.images,
+            current_price: post.currentPrice,
+            price_change: post.priceChange,
+            positive: post.positive,
+            likes: post.likes || 0,
+            comments: post.comments || 0,
+            reposts: post.reposts || 0,
+            accuracy: post.accuracy
+          }).select('*').single();
+          
+          if (simpleError) {
+            throw simpleError;
+          }
+          
+          // Manually bind the profile
+          const { data: profiles } = await supabase.from('user_profiles')
+            .select('user_id, username, display_name, avatar_url, verified')
+            .eq('user_id', userId);
+            
+          const profileObj = (profiles && profiles.length > 0) ? profiles[0] : null;
+          insertedData = {
+            ...simpleData,
+            user_profiles: profileObj
+          };
+        } else {
+          throw error;
+        }
+      } else {
+        insertedData = data;
+      }
+    } catch (insertErr) {
+       console.error("Simple insert fallback also failed:", insertErr);
+       throw insertErr;
     }
-    const mapped = mapRawPostToFeedShape(json.post);
-    if (!mapped) throw new Error("Некорректный ответ сервера");
-    return mapped;
+    
+    if (!insertedData) {
+      throw new Error("Некорректный ответ сервера");
+    }
+    return mapRawPostToFeedShape(insertedData) || mockPost;
   } catch (e) {
     console.warn("Using local storage fallback for publishing:", e);
     const current = getFallbackPosts();
@@ -343,3 +321,4 @@ export async function createServerPost(
     return mockPost;
   }
 }
+

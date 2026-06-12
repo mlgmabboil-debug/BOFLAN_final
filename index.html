@@ -4,8 +4,39 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BOFLAN</title>
+    <script id="sandbox-fetch-fix">
+      (function() {
+        try {
+          if (typeof window !== 'undefined') {
+            var originalFetch = window.fetch;
+            var currentFetch = originalFetch;
+            Object.defineProperty(window, 'fetch', {
+              get: function() {
+                return (typeof currentFetch === 'function') ? currentFetch.bind(window) : currentFetch;
+              },
+              set: function(value) {
+                currentFetch = value;
+              },
+              configurable: true,
+              enumerable: true
+            });
+          }
+        } catch (e) {
+          console.warn('Sandbox fetch setter fallback failed:', e);
+        }
+      })();
+    </script>
   </head>
   <body>
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+            registration.unregister()
+          }
+        })
+      }
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

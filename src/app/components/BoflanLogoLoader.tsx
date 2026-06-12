@@ -19,7 +19,7 @@ export function BoflanLogoLoader({ className = "", size = 40 }: { className?: st
         }}
       />
       <div
-        className="relative rounded-2xl overflow-hidden bg-white shadow-lg ring-2 ring-white/15"
+        className="relative rounded-full overflow-hidden bg-white shadow-lg ring-2 ring-white/15"
         style={{ width: size, height: size }}
       >
         <img

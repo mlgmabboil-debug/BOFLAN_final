@@ -12,7 +12,7 @@ export function BoflanMark({
 }) {
   return (
     <div
-      className={`relative flex-shrink-0 rounded-2xl overflow-hidden bg-white shadow-[0_8px_32px_rgba(0,0,0,0.45)] ring-2 ring-white/20 ${className}`}
+      className={`relative flex-shrink-0 rounded-full overflow-hidden bg-white shadow-[0_8px_32px_rgba(0,0,0,0.45)] ring-2 ring-white/20 ${className}`}
       style={{ width: size, height: size }}
       role="img"
       aria-label={ariaLabel}

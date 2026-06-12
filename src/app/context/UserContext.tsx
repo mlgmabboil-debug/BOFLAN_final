@@ -164,9 +164,17 @@ export function useUser() {
 export function createGuestUser(): AppUser {
   const num = Math.floor(Math.random() * 9000) + 1000;
   const seed = `guest${num}`;
+  
+  let newId;
+  try {
+    newId = crypto.randomUUID();
+  } catch (e) {
+    newId = '00000000-0000-4000-8000-' + String(Date.now()).padStart(12, '0');
+  }
+
   return {
-    id: `guest_${Date.now()}_${num}`,
-    username: `Гость${num}`,
+    id: newId,
+    username: `guest${num}`,
     displayName: `Гость ${num}`,
     avatar: diceAvatar(seed),
     isGuest: true,

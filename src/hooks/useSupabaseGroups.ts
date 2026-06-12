@@ -17,7 +17,7 @@ export function useSupabaseGroups() {
     setError(null)
 
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('groups')
         .select(`
           *,
@@ -26,7 +26,50 @@ export function useSupabaseGroups() {
         `)
         .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        if (error.code === 'PGRST200' || error.message?.includes('relationship')) {
+          console.warn("Foreign relationship select failed in fetchGroups, querying separately...");
+          const { data: groupsOnly, error: groupsError } = await supabase
+            .from('groups')
+            .select('*')
+            .order('created_at', { ascending: false });
+            
+          if (groupsError) throw groupsError;
+          
+          if (groupsOnly) {
+            const ownerIds = Array.from(new Set(groupsOnly.map((g: any) => g.owner_id).filter(Boolean)));
+            let ownersMap = new Map();
+            if (ownerIds.length > 0) {
+              const { data: profiles, error: profilesError } = await supabase
+                .from('user_profiles')
+                .select('user_id, username, display_name, avatar_url, verified')
+                .in('user_id', ownerIds);
+              if (!profilesError && profiles) {
+                ownersMap = new Map(profiles.map((p: any) => [p.user_id, p]));
+              }
+            }
+            
+            const { data: members, error: membersError } = await supabase
+              .from('group_members')
+              .select('group_id');
+              
+            const countsMap = new Map();
+            if (!membersError && members) {
+              for (const m of members) {
+                countsMap.set(m.group_id, (countsMap.get(m.group_id) || 0) + 1);
+              }
+            }
+            
+            data = groupsOnly.map((g: any) => ({
+              ...g,
+              owner: ownersMap.get(g.owner_id) || null,
+              members: [{ count: countsMap.get(g.id) || 0 }]
+            })) as any;
+          }
+        } else {
+          throw error;
+        }
+      }
 
       setGroups(data || [])
     } catch (e: unknown) {
@@ -129,7 +172,7 @@ export function useGroupPosts(groupId: string) {
     setLoading(true)
 
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('group_posts')
         .select(`
           *,
@@ -138,7 +181,38 @@ export function useGroupPosts(groupId: string) {
         .eq('group_id', groupId)
         .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        if (error.code === 'PGRST200' || error.message?.includes('relationship')) {
+          console.warn("Foreign relationship select failed in useGroupPosts, querying separately...");
+          const { data: postsOnly, error: postsError } = await supabase
+            .from('group_posts')
+            .select('*')
+            .eq('group_id', groupId)
+            .order('created_at', { ascending: false });
+            
+          if (postsError) throw postsError;
+          
+          if (postsOnly) {
+            const userIds = Array.from(new Set(postsOnly.map((p: any) => p.user_id).filter(Boolean)));
+            let userMap = new Map();
+            if (userIds.length > 0) {
+              const { data: profiles, error: profilesError } = await supabase
+                .from('user_profiles')
+                .select('user_id, username, display_name, avatar_url')
+                .in('user_id', userIds);
+              if (!profilesError && profiles) {
+                  userMap = new Map(profiles.map((p: any) => [p.user_id, p]));
+              }
+            }
+            data = postsOnly.map((p: any) => ({
+              ...p,
+              user: userMap.get(p.user_id) || null
+            })) as any;
+          }
+        } else {
+          throw error;
+        }
+      }
 
       setPosts(data || [])
     } catch (e: any) {

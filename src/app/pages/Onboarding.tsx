@@ -523,57 +523,6 @@ export function Onboarding() {
             {authError && (
               <p className="text-red-400/80 text-sm">{authError}</p>
             )}
-            {verificationEmail && (
-              <div className="rounded-lg border border-blue-500/20 bg-[#0d0d0d] p-4.5 space-y-3.5">
-                <p className="text-blue-200/95 text-xs leading-relaxed">
-                  Если письмо не пришло (или в панели Supabase по умолчанию включено подтверждение), вы можете войти мгновенно без подтверждения почты, либо отправить письмо повторно.
-                </p>
-                
-                <div className="flex flex-col gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const u = verificationEmail.split("@")[0] || "user";
-                      setUser({
-                        id: `user_bypass_${Date.now()}`,
-                        username: u,
-                        displayName: u,
-                        avatar: `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(u)}`,
-                        isGuest: false,
-                        verified: false,
-                        pnl: "+15.6%",
-                        portfolioValue: "$12,450",
-                        followers: 12,
-                        following: 4,
-                        winRate: 75,
-                        totalTrades: 16,
-                        bio: "Участник BOFLAN (Вход без email)",
-                      });
-                    }}
-                    className="w-full text-center py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
-                  >
-                    ⚡ Войти мгновенно (Пропустить email)
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => resendConfirmationEmail(verificationEmail)}
-                    disabled={resendLoading}
-                    className="w-full text-center py-2 bg-[#222222] hover:bg-[#333333] disabled:opacity-40 text-white rounded-lg text-xs font-medium transition-colors"
-                  >
-                    {resendLoading ? "Отправка..." : "Отправить письмо повторно"}
-                  </button>
-                </div>
-
-                {resendMessage && (
-                  <p className="text-xs text-white/70 bg-white/5 p-2 rounded">{resendMessage}</p>
-                )}
-
-                <div className="text-[10px] text-white/40 leading-normal border-t border-white/5 pt-2">
-                  💡 Совет: для быстрой регистрации без писем снимите флажок "Confirm email" в консоли Supabase (Auth -&gt; Providers -&gt; Email).
-                </div>
-              </div>
-            )}
             {lockUntil && Date.now() < lockUntil && (
               <p className="text-yellow-400/80 text-xs">
                 Защита включена: попробуйте снова через минуту.

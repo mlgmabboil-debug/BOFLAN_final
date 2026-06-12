@@ -250,23 +250,6 @@ export function FeedCard({ post }: FeedCardProps) {
             <MessageCircle size={16} />
             <span className="font-medium">{post.comments + postComments.length}</span>
           </button>
-          <button className="relative flex items-center gap-1.5 text-xs text-white/50 hover:text-emerald-400 transition-all duration-300 btn-press">
-            <Repeat2 size={16} />
-            <span className="font-medium">{post.reposts}</span>
-            <span className="absolute -top-1 -right-1 text-[8px] bg-yellow-500/20 text-yellow-400 px-1 py-0.5 rounded border border-yellow-500/30">DEMO</span>
-          </button>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleSave}
-            className={`transition-all duration-300 btn-press ${saved ? "text-yellow-400" : "text-white/50 hover:text-yellow-400"}`}
-          >
-            <Bookmark size={16} fill={saved ? "currentColor" : "none"} />
-          </button>
-          <button className="relative text-white/50 hover:text-white transition-all duration-300 btn-press">
-            <Share2 size={16} />
-            <span className="absolute -top-1 -right-1 text-[8px] bg-yellow-500/20 text-yellow-400 px-1 py-0.5 rounded border border-yellow-500/30">DEMO</span>
-          </button>
         </div>
       </div>
 

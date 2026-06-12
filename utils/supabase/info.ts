@@ -2,6 +2,7 @@
 // Imports variables from the environment to prevent leaking secrets in source code.
 
 export const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || '';
+export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || (projectId ? `https://${projectId}.supabase.co` : '');
 export const publicAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 if (!projectId || !publicAnonKey) {

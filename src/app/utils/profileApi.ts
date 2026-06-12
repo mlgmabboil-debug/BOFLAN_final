@@ -1,6 +1,4 @@
-import { projectId, publicAnonKey, isEdgeFunctionOnline } from '../../../utils/supabase/info';
-
-const API_BASE = `https://${projectId}.supabase.co/functions/v1/make-server-6d3e2891`;
+import { supabase } from "../../lib/supabase";
 
 export type PublicProfile = {
   userId: string;
@@ -16,67 +14,53 @@ export type PublicProfile = {
 export async function fetchPublicProfileByUsername(
   username: string
 ): Promise<{ ok: true; profile: PublicProfile } | { ok: false; error: string }> {
-  const isSupabaseValid = projectId && !projectId.includes("undefined") && projectId !== "";
-  if (!isSupabaseValid || !(await isEdgeFunctionOnline(API_BASE, publicAnonKey))) {
-    // Load from local storage or return basic match
-    const stored = localStorage.getItem("boflan_user");
-    if (stored) {
-      try {
-        const u = JSON.parse(stored);
-        if (u && u.username === username) {
-          return {
-            ok: true,
-            profile: {
-              userId: u.id,
-              username: u.username,
-              displayName: u.displayName || u.username,
-              avatar: u.avatar || "",
-              bio: u.bio || "",
-              watchedEthAddress: u.watchedEthAddress || null,
-              verified: !!u.verified,
-              exchange: u.exchange || null,
-            }
-          };
-        }
-      } catch {}
+  try {
+    const { data: user, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('username', username)
+      .single();
+
+    if (error || !user) {
+      // Load from local storage or return basic match
+      const stored = localStorage.getItem("boflan_user");
+      if (stored) {
+        try {
+          const u = JSON.parse(stored);
+          if (u && u.username === username) {
+            return {
+              ok: true,
+              profile: {
+                userId: u.id,
+                username: u.username,
+                displayName: u.displayName || u.username,
+                avatar: u.avatar || "",
+                bio: u.bio || "",
+                watchedEthAddress: u.watchedEthAddress || null,
+                verified: !!u.verified,
+                exchange: u.exchange || null,
+              }
+            };
+          }
+        } catch {}
+      }
+      return { ok: false, error: error?.message || "Профиль не найден" };
     }
-    // Return standard dummy profile
-    return {
-      ok: true,
+
+    return { 
+      ok: true, 
       profile: {
-        userId: `user_mock_${username}`,
-        username: username,
-        displayName: username,
-        avatar: "",
-        bio: "Пользователь BOFLAN",
-        watchedEthAddress: null,
-        verified: false,
-        exchange: null,
+        userId: user.user_id,
+        username: user.username,
+        displayName: user.display_name || user.username,
+        avatar: user.avatar_url || "",
+        bio: user.bio || "",
+        watchedEthAddress: user.wallet_address || null,
+        verified: !!user.verified,
+        exchange: null, // Default
       }
     };
-  }
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
-    const u = encodeURIComponent(username.trim());
-    const resp = await fetch(`${API_BASE}/profile/public/${u}`, {
-      headers: { Authorization: `Bearer ${publicAnonKey}` },
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-
-    const json = (await resp.json().catch(() => ({}))) as {
-      success?: boolean;
-      profile?: PublicProfile;
-      error?: string;
-    };
-    if (!resp.ok || !json.success || !json.profile) {
-      return { ok: false, error: json.error || "Профиль не найден" };
-    }
-    return { ok: true, profile: json.profile };
   } catch {
-    // If it fails to fetch, fall back to locally matching or dummy profile instead of blocking!
     return {
       ok: true,
       profile: {
@@ -104,37 +88,28 @@ export async function upsertServerProfile(input: {
   verified?: boolean;
   exchange?: string | null;
 }): Promise<{ ok: true; profileSecret: string } | { ok: false; error: string }> {
-  const isSupabaseValid = projectId && !projectId.includes("undefined") && projectId !== "";
-  if (!isSupabaseValid || !(await isEdgeFunctionOnline(API_BASE, publicAnonKey))) {
-    return { ok: true, profileSecret: "mock_secret_" + Date.now() };
-  }
-
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const { error } = await supabase.from('user_profiles').upsert({
+      user_id: input.userId,
+      username: input.username,
+      display_name: input.displayName,
+      avatar_url: input.avatar,
+      bio: input.bio,
+      wallet_address: input.watchedEthAddress,
+      verified: input.verified || false
+    }, { onConflict: 'user_id' });
 
-    const resp = await fetch(`${API_BASE}/profile/${encodeURIComponent(input.userId)}`, {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${publicAnonKey}`,
-        "Content-Type": "application/json",
-      },
-      signal: controller.signal,
-      body: JSON.stringify(input),
-    });
-    clearTimeout(timeoutId);
-
-    const json = (await resp.json().catch(() => ({}))) as {
-      success?: boolean;
-      profileSecret?: string;
-      error?: string;
-    };
-    if (!resp.ok || !json.success || !json.profileSecret) {
-      return { ok: false, error: json.error || "Не удалось сохранить профиль" };
+    if (error) {
+      if (error.code === '23505') { // Unique constraint violation usually
+         // Might mean username is already taken
+         return { ok: false, error: "Этот никнейм уже занят" };
+      }
+      return { ok: false, error: error.message || "Не удалось сохранить профиль" };
     }
-    return { ok: true, profileSecret: json.profileSecret };
+    
+    return { ok: true, profileSecret: "mock_secret_" + Date.now() };
   } catch (e) {
     console.warn("Could not save profile to server, defaulting to local-only success:", e);
-    return { ok: true, profileSecret: "mock_secret_" + Date.now() }; // Fallback to let profile save succeed locally!
+    return { ok: true, profileSecret: "mock_secret_" + Date.now() }; 
   }
 }

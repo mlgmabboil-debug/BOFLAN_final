@@ -60,7 +60,7 @@ export function Dashboard() {
   }, [feedPosts, activeFilter]);
 
   const publishPost = async () => {
-    if (!user || user.isGuest || !postText.trim()) return;
+    if (!user || !postText.trim()) return;
 
     const next = buildFeedPostFromUser(user, postText, postCoin, postDirection, prices);
     next.images = postImages;
@@ -125,7 +125,7 @@ export function Dashboard() {
         </div>
 
         {/* Composer */}
-        {!user?.isGuest && (
+        {user && (
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -209,9 +209,7 @@ export function Dashboard() {
                 <Filter size={24} className="text-white/20" />
               </div>
               {feedPosts.length === 0
-                ? user?.isGuest
-                  ? "Лента пуста. Зарегистрируйтесь, чтобы публиковать прогнозы."
-                  : "Лента пуста. Опубликуйте первый пост или зайдите позже."
+                ? "Лента пуста. Опубликуйте первый пост или зайдите позже."
                 : "Нет постов по выбранному фильтру."}
             </motion.div>
           ) : (

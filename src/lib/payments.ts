@@ -123,7 +123,7 @@ export class PaymentService {
 
   static async getUserPayments(userId: string) {
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('payments')
         .select(`
           *,
@@ -132,7 +132,38 @@ export class PaymentService {
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        if (error.code === 'PGRST200' || error.message?.includes('relationship')) {
+          console.warn("Foreign relationship select failed in getUserPayments, fetching separately...");
+          const { data: paymentsOnly, error: paymentsError } = await supabase
+            .from('payments')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+
+          if (paymentsError) throw paymentsError;
+
+          if (paymentsOnly) {
+            const groupIds = Array.from(new Set(paymentsOnly.map((p: any) => p.group_id).filter(Boolean)));
+            let groupMap = new Map();
+            if (groupIds.length > 0) {
+              const { data: groups, error: groupsError } = await supabase
+                .from('groups')
+                .select('id, name, description')
+                .in('id', groupIds);
+              if (!groupsError && groups) {
+                groupMap = new Map(groups.map((g: any) => [g.id, g]));
+              }
+            }
+            data = paymentsOnly.map((p: any) => ({
+              ...p,
+              groups: groupMap.get(p.group_id) || null
+            })) as any;
+          }
+        } else {
+          throw error;
+        }
+      }
 
       return data
     } catch (error) {

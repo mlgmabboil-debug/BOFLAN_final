@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { projectId, publicAnonKey } from "../../utils/supabase/info";
+import { supabaseUrl, publicAnonKey } from "../../utils/supabase/info";
 
 const createDummyProxy = (): any => {
   const mockAuth = {
@@ -103,7 +103,7 @@ function createLazySupabaseClient(urlFunc: () => string, keyFunc: () => string, 
 }
 
 export const supabaseAuth = createLazySupabaseClient(
-  () => `https://${projectId}.supabase.co`,
+  () => supabaseUrl,
   () => publicAnonKey,
   {
     auth: {
