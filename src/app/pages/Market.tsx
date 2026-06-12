@@ -2,14 +2,64 @@ import { useState, useMemo, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router";
 import { MARKET_COINS } from "../data/mockData";
 import { MiniChart } from "../components/MiniChart";
-import { useMarketPrices, formatPrice, formatVolume } from "../hooks/useMarketPrices";
+import { useMarketPrices, formatPrice, formatVolume, getCustomCoins, saveCustomCoins } from "../hooks/useMarketPrices";
 import {
   TrendingUp, TrendingDown, Search, ArrowUpDown,
-  RefreshCw, Wifi, WifiOff,
+  RefreshCw, Wifi, WifiOff, X, Sparkles, Plus
 } from "lucide-react";
 import { motion } from "motion/react";
 
-const FILTERS = ["Топ", "Gainers", "Losers", "DeFi", "Layer1"];
+const getCustomCategory = (symbol: string): string => {
+  try {
+    const raw = localStorage.getItem("custom_market_coins_categories");
+    if (raw) {
+      const cats = JSON.parse(raw);
+      return cats[symbol.toUpperCase()] || "";
+    }
+  } catch (e) {}
+  return "";
+}
+
+const saveCustomCategory = (symbol: string, category: string) => {
+  try {
+    const raw = localStorage.getItem("custom_market_coins_categories") || "{}";
+    const cats = JSON.parse(raw);
+    cats[symbol.toUpperCase()] = category;
+    localStorage.setItem("custom_market_coins_categories", JSON.stringify(cats));
+  } catch (e) {}
+}
+
+const FILTERS = [
+  "All",
+  "Hot",
+  "Top",
+  "New",
+  "AI",
+  "Meme",
+  "DeFi",
+  "Layer 1&2",
+  "Top gainers",
+  "Top losers"
+];
+
+const AI_SYMBOLS = new Set([
+  "RNDR", "RENDER", "GRT", "THETA", "AKT", "NEAR", "ICP", "FET", "AGIX", "OCEAN", "FIL"
+]);
+const MEME_SYMBOLS = new Set([
+  "DOGE", "SHIB", "PEPE", "WIF", "FLOKI", "BONK"
+]);
+const DEFI_SYMBOLS = new Set([
+  "LINK", "UNI", "ARB", "LDO", "MKR", "AAVE", "INJ", "RUNE", "JUP", "AKT", "GRT", "FIL", "PENDLE", "CRV", "COMP", "SUSHI", "YFI", "SNX", "BAL", "ZRX"
+]);
+const L1_L2_SYMBOLS = new Set([
+  "BTC", "ETH", "BNB", "SOL", "XRP", "TON", "ADA", "AVAX", "DOT", "TRX", "MATIC", "LTC", "NEAR", "ARB", "APT", "ICP", "ETC", "ATOM", "IMX", "OP", "VET", "FTM", "SUI", "ALGO", "STX", "EGLD", "FLOW", "SEI", "BEAM"
+]);
+const HOT_SYMBOLS = new Set([
+  "BTC", "ETH", "SOL", "DOGE", "PEPE", "WIF", "SUI", "PENDLE", "JUP", "RNDR", "TON"
+]);
+const NEW_SYMBOLS = new Set([
+  "PEPE", "WIF", "BONK", "SUI", "SEI", "JUP", "PENDLE", "BEAM"
+]);
 
 export function Market() {
   const [searchParams] = useSearchParams();
@@ -24,7 +74,21 @@ export function Market() {
   }, [searchParams]);
   const [sortBy, setSortBy] = useState<"rank" | "price" | "change" | "volume">("rank");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [activeFilter, setActiveFilter] = useState("Топ");
+  const [activeFilter, setActiveFilter] = useState("All");
+
+  // Auto-align sorting columns when relevant tags are selected
+  useEffect(() => {
+    if (activeFilter === "Top gainers") {
+      setSortBy("change");
+      setSortDir("desc");
+    } else if (activeFilter === "Top losers") {
+      setSortBy("change");
+      setSortDir("asc");
+    } else if (activeFilter === "Top") {
+      setSortBy("rank");
+      setSortDir("asc");
+    }
+  }, [activeFilter]);
 
   const { prices, loading, error, refreshTopPrices } = useMarketPrices();
 
@@ -164,8 +228,27 @@ export function Market() {
       );
     }
 
-    if (activeFilter === "Gainers") list = list.filter((c) => c.positive);
-    if (activeFilter === "Losers") list = list.filter((c) => !c.positive);
+    const sym = (c: typeof coins[0]) => c.symbol.toUpperCase();
+
+    if (activeFilter === "Hot") {
+      list = list.filter((c) => HOT_SYMBOLS.has(sym(c)) || getCustomCategory(sym(c)) === "Hot");
+    } else if (activeFilter === "Top") {
+      list = list.filter((c) => (c.rank > 0 && c.rank <= 15) || getCustomCategory(sym(c)) === "Top");
+    } else if (activeFilter === "New") {
+      list = list.filter((c) => NEW_SYMBOLS.has(sym(c)) || getCustomCategory(sym(c)) === "New" || getCustomCoins().some(cc => cc.symbol.toUpperCase() === sym(c)));
+    } else if (activeFilter === "AI") {
+      list = list.filter((c) => AI_SYMBOLS.has(sym(c)) || getCustomCategory(sym(c)) === "AI");
+    } else if (activeFilter === "Meme") {
+      list = list.filter((c) => MEME_SYMBOLS.has(sym(c)) || getCustomCategory(sym(c)) === "Meme");
+    } else if (activeFilter === "DeFi") {
+      list = list.filter((c) => DEFI_SYMBOLS.has(sym(c)) || getCustomCategory(sym(c)) === "DeFi");
+    } else if (activeFilter === "Layer 1&2") {
+      list = list.filter((c) => L1_L2_SYMBOLS.has(sym(c)) || getCustomCategory(sym(c)) === "Layer 1&2");
+    } else if (activeFilter === "Top gainers") {
+      list = list.filter((c) => c.positive);
+    } else if (activeFilter === "Top losers") {
+      list = list.filter((c) => !c.positive);
+    }
 
     list.sort((a, b) => {
       let va = 0, vb = 0;
@@ -184,31 +267,111 @@ export function Market() {
     else { setSortBy(col); setSortDir("desc"); }
   };
 
+  // State for launcher modal and notifications
+  const [showLauncher, setShowLauncher] = useState(false);
+  const [launchName, setLaunchName] = useState("");
+  const [launchSymbol, setLaunchSymbol] = useState("");
+  const [launchPrice, setLaunchPrice] = useState("");
+  const [launchCategory, setLaunchCategory] = useState("Meme");
+  const [launching, setLaunching] = useState(false);
+  const [launchSuccess, setLaunchSuccess] = useState<any | null>(null);
+
+  const [activeToast, setActiveToast] = useState<{ symbol: string; name: string; price: number; change: number } | null>(null);
+
+  useEffect(() => {
+    const handleNewListing = (e: Event) => {
+      const coin = (e as CustomEvent).detail;
+      if (coin) {
+        setActiveToast({
+          symbol: coin.symbol,
+          name: coin.name,
+          price: coin.current_price,
+          change: coin.price_change_percentage_24h || 0
+        });
+        
+        const timer = setTimeout(() => {
+          setActiveToast(null);
+        }, 6000);
+        return () => clearTimeout(timer);
+      }
+    };
+    window.addEventListener("new_dex_listing", handleNewListing);
+    return () => window.removeEventListener("new_dex_listing", handleNewListing);
+  }, []);
+
+  const handleLaunchToken = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!launchName || !launchSymbol || !launchPrice) return;
+    
+    setLaunching(true);
+    
+    setTimeout(() => {
+      const sym = launchSymbol.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      const newCoinState = {
+        id: `custom-${sym.toLowerCase()}`,
+        symbol: sym,
+        name: launchName,
+        current_price: parseFloat(launchPrice) || 0.1,
+        price_change_24h: 0,
+        price_change_percentage_24h: Number(((Math.random() - 0.2) * 8).toFixed(2)),
+        market_cap: Math.floor(500000 + Math.random() * 1500000),
+        market_cap_rank: 51 + getCustomCoins().length,
+        total_volume: Math.floor(12000 + Math.random() * 45000),
+        circulating_supply: 1000000000,
+        last_updated: Date.now()
+      };
+      
+      saveCustomCategory(sym, launchCategory);
+      const custom = getCustomCoins();
+      saveCustomCoins([newCoinState, ...custom]);
+      
+      setLaunching(false);
+      setLaunchSuccess({
+        ...newCoinState,
+        txHash: "0x" + Array.from({length: 32}, () => Math.floor(Math.random()*16).toString(16)).join("")
+      });
+      
+      setLaunchName("");
+      setLaunchSymbol("");
+      setLaunchPrice("");
+    }, 1500);
+  };
+
   return (
     <div className="w-full max-w-[1400px] mx-auto px-4 py-6">
       {/* Header */}
       <div className="flex items-start justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="text-white text-xl font-semibold mb-1">Рынок</h1>
-          <p className="text-white/40 text-sm">Котировки в реальном времени · CoinGecko</p>
+          <p className="text-white/40 text-sm">Котировки криптоактивов и листинги в реальном времени</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            {error ? (
-              <WifiOff size={13} className="text-red-400" />
-            ) : (
-              <Wifi size={13} className="text-emerald-400" />
-            )}
-            <span className={`text-xs ${error ? "text-red-400" : "text-emerald-400"}`}>
-              {error ? "Ошибка API" : "Live"}
-            </span>
-          </div>
-          <button
-            onClick={refreshTopPrices}
-            className="p-1.5 rounded text-white/30 hover:text-white hover:bg-[#1a1a1a] transition-colors"
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setShowLauncher(true)}
+            className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black px-3.5 py-1.5 rounded-lg text-xs font-bold shadow-md shadow-emerald-500/10 active:scale-95 transition-all cursor-pointer"
           >
-            <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+            <Plus size={14} strokeWidth={2.5} />
+            <span>Запустить токен</span>
           </button>
+          
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              {error ? (
+                <WifiOff size={13} className="text-red-400" />
+              ) : (
+                <Wifi size={13} className="text-emerald-400" />
+              )}
+              <span className={`text-xs ${error ? "text-red-400" : "text-emerald-400"}`}>
+                {error ? "Ошибка API" : "Live"}
+              </span>
+            </div>
+            <button
+              onClick={refreshTopPrices}
+              className="p-1.5 rounded text-white/30 hover:text-white hover:bg-[#1a1a1a] transition-colors"
+            >
+              <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -281,25 +444,28 @@ export function Market() {
       {/* Table */}
       <div className="bg-[#111111] border border-[#1e1e1e] rounded-lg overflow-hidden">
         {/* Controls */}
-        <div className="p-4 border-b border-[#1a1a1a] flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2 bg-[#1a1a1a] rounded px-3 py-1.5 flex-1 min-w-[200px] max-w-xs">
-            <Search size={13} className="text-white/30" />
+        <div className="p-4 border-b border-[#1a1a1a] flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+          <div className="flex items-center gap-2 bg-[#161616] border border-[#222222] rounded-lg px-3 py-2 w-full xl:max-w-md transition-all focus-within:border-white/20">
+            <Search size={14} className="text-white/30" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Поиск монеты..."
-              className="bg-transparent text-white/70 text-sm outline-none placeholder-white/20 w-full"
+              className="bg-transparent text-white text-sm outline-none placeholder-white/25 w-full font-sans"
             />
           </div>
-          <div className="flex items-center gap-1">
+          <div 
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            className="flex items-center gap-1 overflow-x-auto pb-1 xl:pb-0 max-w-full [&::-webkit-scrollbar]:hidden"
+          >
             {FILTERS.map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveFilter(tab)}
-                className={`px-3 py-1.5 rounded text-xs transition-colors ${
+                className={`flex-shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
                   activeFilter === tab
-                    ? "bg-blue-600/20 text-blue-400 border border-blue-500/30"
-                    : "text-white/40 hover:text-white hover:bg-[#1a1a1a]"
+                    ? "bg-[#222222] text-white border border-[#333333] shadow-sm"
+                    : "text-white/60 hover:text-white hover:bg-[#151515]"
                 }`}
               >
                 {tab}
@@ -386,6 +552,187 @@ export function Market() {
           </div>
         )}
       </div>
+
+      {/* Active Listing Toast */}
+      {activeToast && (
+        <div 
+          onClick={() => {
+            navigate(`/charts?coin=${encodeURIComponent(activeToast.symbol)}`);
+            setActiveToast(null);
+          }}
+          className="fixed bottom-6 right-6 z-50 max-w-sm bg-[#161616]/95 border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.15)] rounded-xl p-4 cursor-pointer hover:bg-[#1c1c1c] hover:border-emerald-500/50 transition-all flex items-start gap-3 backdrop-blur-md"
+        >
+          <div className="bg-emerald-500/10 text-emerald-400 p-2 rounded-lg mt-0.5">
+            <Sparkles size={16} className="animate-pulse" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <span className="text-emerald-400 text-[10px] font-bold tracking-wider uppercase font-mono">DEX Листинг</span>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setActiveToast(null); }}
+                className="text-white/20 hover:text-white"
+              >
+                <X size={12} />
+              </button>
+            </div>
+            <p className="text-white text-sm font-semibold mt-1">
+              Запущен новый токен <span className="text-emerald-300 font-bold">{activeToast.name} ({activeToast.symbol})</span>!
+            </p>
+            <div className="flex items-center gap-2 mt-1.5 font-mono text-xs text-white/50">
+              <span>Цена: ${activeToast.price.toFixed(4)}</span>
+              <span className="text-emerald-400">+{activeToast.change.toFixed(2)}% 🚀</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Token Launcher Modal */}
+      {showLauncher && (
+        <div className="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-[#111111] border border-[#222222] rounded-xl w-full max-w-md overflow-hidden relative shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-[#222222]">
+              <div className="flex items-center gap-2">
+                <Sparkles size={16} className="text-emerald-400" />
+                <h3 className="text-white font-semibold text-sm">Листинг нового токена (DEX Launcher)</h3>
+              </div>
+              <button 
+                onClick={() => { setShowLauncher(false); setLaunchSuccess(null); }}
+                className="text-white/40 hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            {/* Success screen */}
+            {launchSuccess ? (
+              <div className="p-6 text-center">
+                <div className="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 font-bold text-xl">
+                  ✓
+                </div>
+                <h4 className="text-white font-medium text-lg mb-1">Токен успешно запущен!</h4>
+                <p className="text-white/40 text-xs mb-4">Смарт-контракт развернут в тестовой сети Liquidi-DEX</p>
+                
+                <div className="bg-[#161616] border border-[#222222] rounded-lg p-3 text-left space-y-2 mb-6">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-white/40">Имя:</span>
+                    <span className="text-white font-medium">{launchSuccess.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-white/40">Символ:</span>
+                    <span className="text-white font-mono font-medium text-emerald-400">{launchSuccess.symbol}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-white/40">Нач. цена:</span>
+                    <span className="text-white font-mono">${launchSuccess.current_price}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-white/40">Категория:</span>
+                    <span className="bg-[#222222] text-white/70 px-2 py-0.5 rounded text-[10px]">{launchCategory}</span>
+                  </div>
+                  <div className="text-xs pt-1.5 border-t border-[#222222] flex flex-col gap-0.5">
+                    <span className="text-white/30 text-[10px]">Tx Hash:</span>
+                    <span className="text-white/50 font-mono text-[9px] truncate">{launchSuccess.txHash}</span>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setShowLauncher(false);
+                      setLaunchSuccess(null);
+                      navigate(`/charts?coin=${encodeURIComponent(launchSuccess.symbol)}`);
+                    }}
+                    className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2 px-4 rounded-lg text-sm transition-colors cursor-pointer"
+                  >
+                    Открыть график
+                  </button>
+                  <button
+                    onClick={() => setLaunchSuccess(null)}
+                    className="bg-[#1e1e1e] hover:bg-[#252525] text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors cursor-pointer"
+                  >
+                    Запустить еще
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleLaunchToken} className="p-4 space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-white/50 text-xs">Название токена</label>
+                  <input
+                    value={launchName}
+                    onChange={(e) => setLaunchName(e.target.value)}
+                    required
+                    maxLength={30}
+                    placeholder="Например, Sora Artificial"
+                    className="w-full bg-[#161616] border border-[#222222] rounded-lg p-2.5 text-white text-sm outline-none focus:border-emerald-500/40"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-white/50 text-xs">Символ (Тикер)</label>
+                    <input
+                      value={launchSymbol}
+                      onChange={(e) => setLaunchSymbol(e.target.value)}
+                      required
+                      maxLength={8}
+                      placeholder="Например, SORA"
+                      className="w-full bg-[#161616] border border-[#222222] rounded-lg p-2.5 text-white font-mono text-sm outline-none focus:border-emerald-500/40 uppercase"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-white/50 text-xs">Нач. цена ($ USD)</label>
+                    <input
+                      type="number"
+                      step="any"
+                      min="0.00000001"
+                      value={launchPrice}
+                      onChange={(e) => setLaunchPrice(e.target.value)}
+                      required
+                      placeholder="0.05"
+                      className="w-full bg-[#161616] border border-[#222222] rounded-lg p-2.5 text-white text-sm outline-none focus:border-emerald-500/40"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-white/50 text-xs">Категория рынка</label>
+                  <select
+                    value={launchCategory}
+                    onChange={(e) => setLaunchCategory(e.target.value)}
+                    className="w-full bg-[#161616] border border-[#222222] rounded-lg p-2.5 text-white text-sm outline-none focus:border-[#444] text-white"
+                  >
+                    <option value="Meme">Meme (Мем-токен)</option>
+                    <option value="AI">AI (Искусственный интеллект)</option>
+                    <option value="DeFi">DeFi (Децентрализованные финансы)</option>
+                    <option value="Layer 1&2">Layer 1 & 2 (Уровень 1/2 системы)</option>
+                    <option value="New">Hot / New (Новые списки)</option>
+                  </select>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={launching}
+                  className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 px-4 rounded-lg text-sm transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+                >
+                  {launching ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                      <span>Развертывание контракта в сети...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={14} />
+                      <span>Инициализировать DEX Листинг</span>
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

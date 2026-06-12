@@ -10,7 +10,7 @@ export const router = createBrowserRouter([
       { path: "dashboard", lazy: async () => ({ Component: (await import("./pages/Dashboard")).Dashboard }) },
       { path: "market", element: <Navigate to="/charts" replace /> },
       { path: "charts", lazy: async () => ({ Component: (await import("./pages/Charts")).default }) },
-      { path: "dex", lazy: async () => ({ Component: (await import("./pages/Dex")).Dex }) },
+      { path: "dex", element: <Navigate to="/charts?tab=dex" replace /> },
       { path: "groups", lazy: async () => ({ Component: (await import("./pages/Groups")).Groups }) },
       { path: "community", lazy: async () => ({ Component: (await import("./pages/Community")).Community }) },
       { path: "settings", lazy: async () => ({ Component: (await import("./pages/Settings")).default }) },

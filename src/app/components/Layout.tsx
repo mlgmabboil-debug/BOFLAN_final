@@ -24,7 +24,6 @@ function navItemActive(pathname: string, itemPath: string): boolean {
 const NAV_ITEMS = [
   { path: "/dashboard", label: "Лента", icon: LayoutDashboard },
   { path: "/charts", label: "Рынок", icon: BarChart2 },
-  { path: "/dex", label: "DEX", icon: Zap },
   { path: "/groups", label: "Группы", icon: Users },
   { path: "/community", label: "Сообщества", icon: MessagesSquare },
   { path: "/profile", label: "Профиль", icon: User },
