@@ -89,7 +89,13 @@ export async function fetchFeedPosts(): Promise<FeedPostShape[]> {
     if (res.ok) {
       const serverRaw = await res.json();
       if (Array.isArray(serverRaw)) {
-        return serverRaw.map((p: any) => mapRawPostToFeedShape(p)).filter((p: any): p is FeedPostShape => p !== null);
+        const mapped = serverRaw.map((p: any) => mapRawPostToFeedShape(p)).filter((p: any): p is FeedPostShape => p !== null);
+        try {
+          localStorage.setItem(USER_POSTS_KEY, JSON.stringify(mapped));
+        } catch (e) {
+          console.warn("Writing to localStorage failed:", e);
+        }
+        return mapped;
       }
     }
   } catch (err) {
