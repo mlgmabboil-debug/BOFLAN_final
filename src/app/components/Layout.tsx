@@ -21,12 +21,27 @@ function navItemActive(pathname: string, itemPath: string): boolean {
   return pathname === itemPath;
 }
 
-const NAV_ITEMS = [
-  { path: "/dashboard", label: "Лента", icon: LayoutDashboard },
-  { path: "/charts", label: "Рынок", icon: BarChart2 },
-  { path: "/groups", label: "Группы", icon: Users },
-  { path: "/community", label: "Сообщества", icon: MessagesSquare },
-  { path: "/profile", label: "Профиль", icon: User },
+const NAV_GROUPS = [
+  {
+    title: "ОБЗОР",
+    items: [
+      { path: "/dashboard", label: "Лента", icon: LayoutDashboard },
+      { path: "/charts", label: "Рынок", icon: BarChart2 },
+    ]
+  },
+  {
+    title: "СОЦИАЛЬНОЕ",
+    items: [
+      { path: "/groups", label: "Группы", icon: Users },
+      { path: "/community", label: "Сообщества", icon: MessagesSquare },
+    ]
+  },
+  {
+    title: "АККАУНТ",
+    items: [
+      { path: "/profile", label: "Профиль", icon: User },
+    ]
+  }
 ];
 
 const MOBILE_NAV_ITEMS = [
@@ -125,30 +140,38 @@ export function Layout() {
           </div>
 
           {/* Nav */}
-          <nav className="flex-1 px-3 py-4 space-y-1">
-            {NAV_ITEMS.map((item) => {
-              const active = navItemActive(location.pathname, item.path);
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.path}
-                  onClick={() => navigate(item.path)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-300 ${
-                    active
-                      ? "bg-blue-600/15 text-white border-l-2 border-blue-500 pl-[10px]"
-                      : "text-white/50 hover:text-white hover:bg-white/5"
-                  }`}
-                >
-                  <Icon size={18} className={active ? "text-blue-400" : ""} />
-                  <span className="font-medium">{item.label}</span>
-                  {item.path === "/dex" && (
-                    <span className="ml-auto text-[9px] bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400 border border-yellow-500/30 px-1.5 py-0.5 rounded font-mono">
-                      NEW
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+          <nav className="flex-1 px-3 py-6 space-y-6 overflow-y-auto custom-scrollbar">
+            {NAV_GROUPS.map((group, groupIdx) => (
+              <div key={groupIdx} className="space-y-1">
+                <div className="px-3 text-[10px] font-bold text-white/30 tracking-wider mb-2">
+                  {group.title}
+                </div>
+                {group.items.map((item) => {
+                  const active = navItemActive(location.pathname, item.path);
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.path}
+                      onClick={() => navigate(item.path)}
+                      className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-300 group ${
+                        active
+                          ? "bg-blue-600/15 text-white"
+                          : "text-white/50 hover:text-white hover:bg-white/5"
+                      }`}
+                    >
+                      {active && (
+                         <motion.div 
+                           layoutId="active-desktop-nav"
+                           className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-blue-500 rounded-r-full"
+                         />
+                      )}
+                      <Icon size={18} className={`transition-colors ${active ? "text-blue-400" : "group-hover:text-white/80"}`} />
+                      <span className="font-medium tracking-wide">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
           </nav>
 
           {/* User card */}
@@ -221,25 +244,38 @@ export function Layout() {
                     <X size={20} />
                   </button>
                 </div>
-                <nav className="flex-1 px-3 py-4 space-y-1">
-                  {NAV_ITEMS.map((item) => {
-                    const active = navItemActive(location.pathname, item.path);
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={item.path}
-                        onClick={() => { navigate(item.path); setMobileOpen(false); }}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-300 ${
-                          active 
-                            ? "bg-blue-600/15 text-white" 
-                            : "text-white/50 hover:text-white hover:bg-white/5"
-                        }`}
-                      >
-                        <Icon size={18} className={active ? "text-blue-400" : ""} />
-                        <span className="font-medium">{item.label}</span>
-                      </button>
-                    );
-                  })}
+                <nav className="flex-1 px-3 py-6 space-y-6 overflow-y-auto custom-scrollbar">
+                  {NAV_GROUPS.map((group, groupIdx) => (
+                    <div key={groupIdx} className="space-y-1">
+                      <div className="px-3 text-[10px] font-bold text-white/30 tracking-wider mb-2">
+                        {group.title}
+                      </div>
+                      {group.items.map((item) => {
+                        const active = navItemActive(location.pathname, item.path);
+                        const Icon = item.icon;
+                        return (
+                          <button
+                            key={item.path}
+                            onClick={() => { navigate(item.path); setMobileOpen(false); }}
+                            className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-300 group ${
+                              active 
+                                ? "bg-blue-600/15 text-white" 
+                                : "text-white/50 hover:text-white hover:bg-white/5"
+                            }`}
+                          >
+                            {active && (
+                              <motion.div 
+                                layoutId="active-mobile-nav"
+                                className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-blue-500 rounded-r-full"
+                              />
+                            )}
+                            <Icon size={18} className={`transition-colors ${active ? "text-blue-400" : "group-hover:text-white/80"}`} />
+                            <span className="font-medium tracking-wide">{item.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
                 </nav>
                 <div className="p-3 border-t border-white/5">
                   <div className="flex items-center gap-2 p-2.5 mb-1 rounded-xl hover:bg-white/5 transition-colors">
