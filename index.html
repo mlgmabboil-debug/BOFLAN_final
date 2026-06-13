@@ -126,6 +126,25 @@
               event.stopPropagation();
             }
           }, { capture: true });
+
+          // Console filtering for known benign messages
+          var originalConsoleError = console.error;
+          console.error = function() {
+            var msg = arguments[0];
+            if (typeof msg === 'string' && (msg.indexOf('failed to connect to websocket') !== -1 || msg.indexOf('WebSocket closed without opened') !== -1)) {
+              return;
+            }
+            originalConsoleError.apply(console, arguments);
+          };
+
+          var originalConsoleWarn = console.warn;
+          console.warn = function() {
+            var msg = arguments[0];
+            if (typeof msg === 'string' && (msg.indexOf('Lit is in dev mode') !== -1 || msg.indexOf('externalized for browser compatibility') !== -1 || msg.indexOf('WebSocket') !== -1)) {
+              return;
+            }
+            originalConsoleWarn.apply(console, arguments);
+          };
         }
       })();
     </script>

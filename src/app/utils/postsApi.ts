@@ -161,7 +161,15 @@ export async function fetchFeedPosts(): Promise<FeedPostShape[]> {
       return getFallbackPosts();
     }
 
-    return posts.map((p: any) => mapRawPostToFeedShape(p)).filter((p: any): p is FeedPostShape => p !== null);
+    const mapped = posts.map((p: any) => mapRawPostToFeedShape(p)).filter((p: any): p is FeedPostShape => p !== null);
+    
+    try {
+      localStorage.setItem(USER_POSTS_KEY, JSON.stringify(mapped));
+    } catch (e) {
+      console.warn("Writing to localStorage failed:", e);
+    }
+    return mapped;
+
   } catch (err) {
     console.error("fetchFeedPosts error:", err);
     return getFallbackPosts();
