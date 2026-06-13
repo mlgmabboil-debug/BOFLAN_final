@@ -51,6 +51,15 @@ export const COIN_MAP = {
   KCS: 'kucoin-shares',
   HT: 'huobi-token',
   LUNA: 'terra-luna-2',
+  TIA: 'celestia',
+  WLD: 'worldcoin-wld',
+  FET: 'fetch-ai',
+  AGIX: 'singularitynet',
+  ORDI: 'ordi',
+  ARKM: 'arkham',
+  PYTH: 'pyth-network',
+  JTO: 'jito-governance-token',
+  STRK: 'starknet',
 } as const
 
 export interface CoinPrice {
@@ -131,7 +140,11 @@ const FALLBACK_PRICES: CoinPrice[] = [
   { id: 'jupiter', symbol: 'JUP', name: 'Jupiter', current_price: 0.98, price_change_24h: -0.02, price_change_percentage_24h: -2.00, market_cap: 1320000000, market_cap_rank: 47, total_volume: 140000000, circulating_supply: 1350000000, last_updated: Date.now() },
   { id: 'akash-network', symbol: 'AKT', name: 'Akash Network', current_price: 3.45, price_change_24h: 0.12, price_change_percentage_24h: 3.60, market_cap: 820000000, market_cap_rank: 48, total_volume: 25000000, circulating_supply: 240000000, last_updated: Date.now() },
   { id: 'beam', symbol: 'BEAM', name: 'Beam', current_price: 0.022, price_change_24h: -0.0012, price_change_percentage_24h: -5.17, market_cap: 1100000000, market_cap_rank: 49, total_volume: 45000000, circulating_supply: 50000000000, last_updated: Date.now() },
-  { id: 'pendle', symbol: 'PENDLE', name: 'Pendle', current_price: 5.12, price_change_24h: 0.42, price_change_percentage_24h: 8.94, market_cap: 780000000, market_cap_rank: 50, total_volume: 68000000, circulating_supply: 150000000, last_updated: Date.now() }
+  { id: 'pendle', symbol: 'PENDLE', name: 'Pendle', current_price: 5.12, price_change_24h: 0.42, price_change_percentage_24h: 8.94, market_cap: 780000000, market_cap_rank: 50, total_volume: 68000000, circulating_supply: 150000000, last_updated: Date.now() },
+  { id: 'celestia', symbol: 'TIA', name: 'Celestia', current_price: 10.5, price_change_24h: 0.8, price_change_percentage_24h: 8.24, market_cap: 1900000000, market_cap_rank: 51, total_volume: 180000000, circulating_supply: 180000000, last_updated: Date.now() },
+  { id: 'worldcoin-wld', symbol: 'WLD', name: 'Worldcoin', current_price: 4.8, price_change_24h: -0.2, price_change_percentage_24h: -4.0, market_cap: 1100000000, market_cap_rank: 52, total_volume: 300000000, circulating_supply: 220000000, last_updated: Date.now() },
+  { id: 'fetch-ai', symbol: 'FET', name: 'Fetch.ai', current_price: 2.1, price_change_24h: 0.15, price_change_percentage_24h: 7.69, market_cap: 1800000000, market_cap_rank: 53, total_volume: 250000000, circulating_supply: 850000000, last_updated: Date.now() },
+  { id: 'starknet', symbol: 'STRK', name: 'Starknet', current_price: 1.25, price_change_24h: 0.05, price_change_percentage_24h: 4.16, market_cap: 1600000000, market_cap_rank: 54, total_volume: 120000000, circulating_supply: 1300000000, last_updated: Date.now() }
 ]
 
 export const PROCEED_NAMES = [

@@ -7,7 +7,7 @@ import { AIChat } from '../components/AIChat'
 import { MiniChart } from '../components/MiniChart'
 import { useMarketPrices, getCustomCoins } from '../hooks/useMarketPrices'
 import { useDexFeed } from '../hooks/useDexFeed'
-import { useSearchParams } from 'react-router'
+import { useSearchParams, useNavigate } from 'react-router'
 import {
   TrendingUp, TrendingDown, BarChart3, CandlestickChart, Activity, Search, ArrowUpDown,
   Zap, Shield, AlertTriangle, Eye, Target, Brain, ExternalLink, RefreshCw, ChevronLeft, ChevronRight
@@ -49,13 +49,13 @@ const DEFI_SYMBOLS = new Set([
   "LINK", "UNI", "ARB", "LDO", "MKR", "AAVE", "INJ", "RUNE", "JUP", "AKT", "GRT", "FIL", "PENDLE", "CRV", "COMP", "SUSHI", "YFI", "SNX", "BAL", "ZRX"
 ]);
 const L1_L2_SYMBOLS = new Set([
-  "BTC", "ETH", "BNB", "SOL", "XRP", "TON", "ADA", "AVAX", "DOT", "TRX", "MATIC", "LTC", "NEAR", "ARB", "APT", "ICP", "ETC", "ATOM", "IMX", "OP", "VET", "FTM", "SUI", "ALGO", "STX", "EGLD", "FLOW", "SEI", "BEAM"
+  "BTC", "ETH", "BNB", "SOL", "XRP", "TON", "ADA", "AVAX", "DOT", "TRX", "MATIC", "LTC", "NEAR", "ARB", "APT", "ICP", "ETC", "ATOM", "IMX", "OP", "VET", "FTM", "SUI", "ALGO", "STX", "EGLD", "FLOW", "SEI", "BEAM", "TIA", "WLD", "FET", "AGIX", "ORDI", "ARKM", "PYTH", "JTO", "STRK"
 ]);
 const HOT_SYMBOLS = new Set([
-  "BTC", "ETH", "SOL", "DOGE", "PEPE", "WIF", "SUI", "PENDLE", "JUP", "RNDR", "TON"
+  "BTC", "ETH", "SOL", "DOGE", "PEPE", "WIF", "SUI", "PENDLE", "JUP", "RNDR", "TON", "TIA", "WLD", "FET"
 ]);
 const NEW_SYMBOLS = new Set([
-  "PEPE", "WIF", "BONK", "SUI", "SEI", "JUP", "PENDLE", "BEAM"
+  "PEPE", "WIF", "BONK", "SUI", "SEI", "JUP", "PENDLE", "BEAM", "TIA", "WLD", "ARKM", "PYTH", "JTO", "STRK"
 ]);
 
 const USD_TO_RUB = 92.40
@@ -179,6 +179,7 @@ function generateForecast(token: any) {
 
 export default function Charts() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<'crypto' | 'dex'>(
     searchParams.get('tab') === 'dex' ? 'dex' : 'crypto'
   )
@@ -507,6 +508,13 @@ export default function Charts() {
                         </h2>
                       </div>
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => navigate(`/coin/${encodeURIComponent(selectedCoin)}`)}
+                          className="flex items-center gap-1.5 bg-[#222] hover:bg-[#333] border border-[#333] text-white px-3 py-1 rounded text-sm transition-all"
+                        >
+                          <BarChart3 size={14} className="text-emerald-400" />
+                          Аналитика
+                        </button>
                         <span className="bg-[#1a1a1a] px-3 py-1 rounded text-white/70 text-sm">
                           {selectedTimeframe.toUpperCase()}
                         </span>

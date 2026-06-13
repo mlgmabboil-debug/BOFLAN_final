@@ -33,10 +33,44 @@ async function startServer() {
     }
   }
 
-  // Initialize database with an empty array if it doesn't exist
+  // Initialize databases with empty data if they don't exist
   if (!fs.existsSync(DB_FILE)) {
     saveStoredPosts([]);
   }
+
+  const SENTIMENT_FILE = path.join(process.cwd(), "sentiment_db.json");
+  function getSentiments() {
+    try {
+      if (fs.existsSync(SENTIMENT_FILE)) {
+        return JSON.parse(fs.readFileSync(SENTIMENT_FILE, "utf-8"));
+      }
+    } catch (err) {
+      console.error("Error reading sentiment db:", err);
+    }
+    return {};
+  }
+  function saveSentiments(s: any) {
+    try {
+      fs.writeFileSync(SENTIMENT_FILE, JSON.stringify(s, null, 2), "utf-8");
+    } catch (err) { }
+  }
+
+  app.get("/api/sentiment/:coin", (req, res) => {
+    const sentiments = getSentiments();
+    const coin = req.params.coin.toUpperCase();
+    res.json(sentiments[coin] || { bullish: 0, bearish: 0 });
+  });
+
+  app.post("/api/sentiment/:coin", (req, res) => {
+    const sentiments = getSentiments();
+    const coin = req.params.coin.toUpperCase();
+    const { vote } = req.body;
+    if (!sentiments[coin]) sentiments[coin] = { bullish: 0, bearish: 0 };
+    if (vote === 'bullish') sentiments[coin].bullish += 1;
+    if (vote === 'bearish') sentiments[coin].bearish += 1;
+    saveSentiments(sentiments);
+    res.json(sentiments[coin]);
+  });
 
   // REST API for posts
   app.get("/api/posts", (req, res) => {

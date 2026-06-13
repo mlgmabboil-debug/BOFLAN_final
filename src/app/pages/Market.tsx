@@ -52,13 +52,13 @@ const DEFI_SYMBOLS = new Set([
   "LINK", "UNI", "ARB", "LDO", "MKR", "AAVE", "INJ", "RUNE", "JUP", "AKT", "GRT", "FIL", "PENDLE", "CRV", "COMP", "SUSHI", "YFI", "SNX", "BAL", "ZRX"
 ]);
 const L1_L2_SYMBOLS = new Set([
-  "BTC", "ETH", "BNB", "SOL", "XRP", "TON", "ADA", "AVAX", "DOT", "TRX", "MATIC", "LTC", "NEAR", "ARB", "APT", "ICP", "ETC", "ATOM", "IMX", "OP", "VET", "FTM", "SUI", "ALGO", "STX", "EGLD", "FLOW", "SEI", "BEAM"
+  "BTC", "ETH", "BNB", "SOL", "XRP", "TON", "ADA", "AVAX", "DOT", "TRX", "MATIC", "LTC", "NEAR", "ARB", "APT", "ICP", "ETC", "ATOM", "IMX", "OP", "VET", "FTM", "SUI", "ALGO", "STX", "EGLD", "FLOW", "SEI", "BEAM", "TIA", "WLD", "FET", "AGIX", "ORDI", "ARKM", "PYTH", "JTO", "STRK"
 ]);
 const HOT_SYMBOLS = new Set([
-  "BTC", "ETH", "SOL", "DOGE", "PEPE", "WIF", "SUI", "PENDLE", "JUP", "RNDR", "TON"
+  "BTC", "ETH", "SOL", "DOGE", "PEPE", "WIF", "SUI", "PENDLE", "JUP", "RNDR", "TON", "TIA", "WLD", "FET"
 ]);
 const NEW_SYMBOLS = new Set([
-  "PEPE", "WIF", "BONK", "SUI", "SEI", "JUP", "PENDLE", "BEAM"
+  "PEPE", "WIF", "BONK", "SUI", "SEI", "JUP", "PENDLE", "BEAM", "TIA", "WLD", "ARKM", "PYTH", "JTO", "STRK"
 ]);
 
 export function Market() {

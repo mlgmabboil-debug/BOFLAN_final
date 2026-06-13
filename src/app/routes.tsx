@@ -18,6 +18,7 @@ export const router = createBrowserRouter([
       { path: "exchanges", lazy: async () => ({ Component: (await import("./pages/Exchanges")).default }) },
       { path: "profile", lazy: async () => ({ Component: (await import("./pages/Profile")).Profile }) },
       { path: "profile/:username", lazy: async () => ({ Component: (await import("./pages/Profile")).Profile }) },
+      { path: "coin/:symbol", lazy: async () => ({ Component: (await import("./pages/CoinDetails")).default }) },
     ],
   },
 ]);
