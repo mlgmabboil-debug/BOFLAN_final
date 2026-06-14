@@ -18,13 +18,37 @@ const createDummyProxy = (): any => {
   });
 };
 
+const DEFAULT_SUPABASE_URL = "https://cqsquukhdztmpruspoqr.supabase.co";
+const DEFAULT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxc3F1dWtoZHp0bXBydXNwb3FyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0MDIwMzcsImV4cCI6MjA4Nzk3ODAzN30._id-OteAqWSI7WZnr7CjP5w7b6b33rFKdA_edMvX9iM";
+
+export const getSupabaseConfig = () => {
+  if (typeof window !== "undefined") {
+    const localUrl = localStorage.getItem("boflan_supabase_url");
+    const localKey = localStorage.getItem("boflan_supabase_anon_key");
+    if (localUrl && localKey) {
+      return { url: localUrl.trim(), key: localKey.trim() };
+    }
+  }
+  const envUrl = import.meta.env.VITE_SUPABASE_URL;
+  const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (envUrl && envKey && !envUrl.includes("undefined") && !envKey.includes("undefined")) {
+    return { url: envUrl.trim(), key: envKey.trim() };
+  }
+  return { url: DEFAULT_SUPABASE_URL, key: DEFAULT_SUPABASE_ANON_KEY };
+};
+
 function createLazySupabaseClient(urlFunc: () => string, keyFunc: () => string, options?: any) {
   let client: any = null;
+  let lastUrl = '';
+  let lastKey = '';
   return new Proxy({}, {
     get(target, prop) {
-      if (!client) {
-        const url = urlFunc();
-        const key = keyFunc();
+      const url = urlFunc();
+      const key = keyFunc();
+      
+      if (!client || url !== lastUrl || key !== lastKey) {
+        lastUrl = url;
+        lastKey = key;
         if (!url || url.includes('undefined') || !url.replace('https://', '').replace('.supabase.co', '') || !key) {
           console.warn("Supabase keys are missing! Returning a dummy client to prevent crashes.");
           client = createDummyProxy();
@@ -32,6 +56,7 @@ function createLazySupabaseClient(urlFunc: () => string, keyFunc: () => string, 
           client = createClient(url, key, options);
         }
       }
+      
       const val = client[prop];
       if (typeof val === 'function') {
         return val.bind(client);
@@ -41,12 +66,9 @@ function createLazySupabaseClient(urlFunc: () => string, keyFunc: () => string, 
   }) as any;
 }
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID || ''}.supabase.co`
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-
 export const supabase = createLazySupabaseClient(
-  () => supabaseUrl,
-  () => supabaseAnonKey || ''
+  () => getSupabaseConfig().url,
+  () => getSupabaseConfig().key
 )
 
 

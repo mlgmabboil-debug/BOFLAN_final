@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Shield, Lock, Eye, EyeOff, Smartphone, Activity, AlertTriangle, CheckCircle, RefreshCw, Settings } from 'lucide-react'
 import { SecurityDashboard } from '../components/SecurityDashboard'
 import { SecureForm, PasswordStrengthIndicator, SecurityBadge } from '../components/SecureForm'
@@ -21,6 +21,66 @@ export default function Security() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
   const [biometricEnabled, setBiometricEnabled] = useState(false)
+
+  // Supabase dynamic integration state
+  const [supabaseUrl, setSupabaseUrl] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem("boflan_supabase_url") || "https://cqsquukhdztmpruspoqr.supabase.co";
+    }
+    return "https://cqsquukhdztmpruspoqr.supabase.co";
+  })
+  const [supabaseAnonKey, setSupabaseAnonKey] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem("boflan_supabase_anon_key") || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxc3F1dWtoZHp0bXBydXNwb3FyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0MDIwMzcsImV4cCI6MjA4Nzk3ODAzN30._id-OteAqWSI7WZnr7CjP5w7b6b33rFKdA_edMvX9iM";
+    }
+    return "";
+  })
+  const [dbStatus, setDbStatus] = useState<'testing' | 'connected' | 'error'>('testing')
+  const [dbErrorMessage, setDbErrorMessage] = useState('')
+  const [saveStatus, setSaveStatus] = useState<'' | 'success' | 'reset'>('');
+
+  useEffect(() => {
+    const testConnection = async () => {
+      try {
+        const { supabase } = await import('../../lib/supabase');
+        const { error } = await supabase.from('posts').select('id').limit(1);
+        if (error) {
+          setDbStatus('error');
+          setDbErrorMessage(error.message || `Error ${error.code}`);
+        } else {
+          setDbStatus('connected');
+        }
+      } catch (err: any) {
+        setDbStatus('error');
+        setDbErrorMessage(err.message || 'Error executing test request');
+      }
+    };
+    testConnection();
+  }, []);
+
+  const handleSaveSupabase = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem("boflan_supabase_url", supabaseUrl.trim());
+      localStorage.setItem("boflan_supabase_anon_key", supabaseAnonKey.trim());
+      setSaveStatus('success');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1200);
+    }
+  }
+
+  const handleResetSupabase = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem("boflan_supabase_url");
+      localStorage.removeItem("boflan_supabase_anon_key");
+      setSaveStatus('reset');
+      setSupabaseUrl("https://cqsquukhdztmpruspoqr.supabase.co");
+      setSupabaseAnonKey("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxc3F1dWtoZHp0bXBydXNwb3FyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0MDIwMzcsImV4cCI6MjA4Nzk3ODAzN30._id-OteAqWSI7WZnr7CjP5w7b6b33rFKdA_edMvX9iM");
+      setTimeout(() => {
+        window.location.reload();
+      }, 1200);
+    }
+  }
   
   const { 
     isSecure, 
@@ -275,6 +335,103 @@ export default function Security() {
 
   const renderAdvanced = () => (
     <div className="space-y-6">
+      {/* Supabase Connection Setup */}
+      <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-6">
+        <div className="flex md:items-center justify-between flex-col md:flex-row gap-3 mb-4">
+          <div>
+            <h3 className="text-white font-medium">Интеграция с базой данных (Supabase)</h3>
+            <p className="text-white/60 text-xs mt-1">
+              Настройте подключение к своей базе данных для синхронизации постов и профилей участников.
+            </p>
+          </div>
+          <div className="flex items-center">
+            {dbStatus === 'testing' && (
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-yellow-400/15 border border-yellow-400/20 text-yellow-400 text-xs font-medium">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                Проверка связи...
+              </span>
+            )}
+            {dbStatus === 'connected' && (
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-400/15 border border-green-400/20 text-green-400 text-xs font-medium">
+                <CheckCircle className="w-3.5 h-3.5 text-green-400" />
+                Подключено
+              </span>
+            )}
+            {dbStatus === 'error' && (
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-400/15 border border-red-400/20 text-red-400 text-xs font-medium" title={dbErrorMessage}>
+                <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+                Нет связи (401)
+              </span>
+            )}
+          </div>
+        </div>
+
+        {dbStatus === 'error' && (
+          <div className="mb-4 p-3 bg-red-400/10 border border-red-400/15 text-red-400 text-xs rounded-md">
+            <strong>Ошибка соединения:</strong> {dbErrorMessage}. Пожалуйста, вставьте действительные учетные данные Supabase. Убедитесь, что таблицы и политики RLS в базе данных созданы.
+          </div>
+        )}
+
+        {saveStatus === 'success' && (
+          <div className="mb-4 p-3 bg-green-400/10 border border-green-400/15 text-green-400 text-xs rounded-md">
+            Получено! Страница сейчас перезагрузится, чтобы применить новые ключи и запустить полную синхронизацию постов.
+          </div>
+        )}
+
+        {saveStatus === 'reset' && (
+          <div className="mb-4 p-3 bg-yellow-400/10 border border-yellow-400/15 text-yellow-400 text-xs rounded-md">
+            Ключи сброшены в положение по умолчанию. Выполняется перезагрузка...
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <label className="block text-white/50 text-xs font-medium mb-1.5 uppercase tracking-wider">
+                Supabase URL
+              </label>
+              <input
+                type="text"
+                value={supabaseUrl}
+                onChange={(e) => setSupabaseUrl(e.target.value)}
+                placeholder="Пример: https://cqsquukhdztmpruspoqr.supabase.co"
+                className="w-full bg-[#111111] border border-[#1e1e1e] rounded-md px-3 py-2 text-white placeholder-white/30 text-sm focus:outline-none focus:border-blue-500 font-mono"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-white/50 text-xs font-medium mb-1.5 uppercase tracking-wider">
+                Supabase Anon / Public Key
+              </label>
+              <textarea
+                value={supabaseAnonKey}
+                onChange={(e) => setSupabaseAnonKey(e.target.value)}
+                rows={2}
+                placeholder="Вставьте ваш длинный anon key, начинающийся с eyJhbGc..."
+                className="w-full bg-[#111111] border border-[#1e1e1e] rounded-md px-3 py-2 text-white placeholder-white/30 text-xs focus:outline-none focus:border-blue-500 font-mono resize-none leading-relaxed"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2 pt-2">
+            <button
+              onClick={handleSaveSupabase}
+              disabled={saveStatus !== ''}
+              className="flex-1 bg-[#00D084] hover:bg-[#00b876] disabled:opacity-50 text-white font-medium text-sm rounded-md py-2.5 transition-colors"
+            >
+              Сохранить и Синхронизировать
+            </button>
+            <button
+              onClick={handleResetSupabase}
+              disabled={saveStatus !== ''}
+              className="px-4 bg-[#1a1a1a] border border-[#2a2a2a] hover:bg-[#252525] text-white/70 hover:text-white font-medium text-sm rounded-md py-2.5 transition-colors"
+            >
+              Сбросить
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* API Security */}
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-6">
         <h3 className="text-white font-medium mb-4">API безопасность</h3>
