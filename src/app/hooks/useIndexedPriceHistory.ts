@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { COIN_MAP } from "./useMarketPrices";
+import { resolveCoinGeckoUrl } from "../utils/coingecko";
 
 export type IndexedPoint = { label: string; value: number; price: number };
 
@@ -46,7 +47,7 @@ export function useIndexedPriceHistory(
     setError(null);
 
     fetch(
-      `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${days}`
+      resolveCoinGeckoUrl(`https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${days}`)
     )
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((j: { prices?: [number, number][] }) => {

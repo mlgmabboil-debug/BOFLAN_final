@@ -74,12 +74,138 @@ export function mapRawPostToFeedShape(raw: RawPost): FeedPostShape | null {
   };
 }
 
+export const DEFAULT_SEED_POSTS: FeedPostShape[] = [
+  {
+    id: "post_seed_1",
+    user: {
+      id: "seeder_1",
+      username: "satoshi_hunter",
+      displayName: "Satoshi Hunter",
+      avatar: "https://api.dicebear.com/7.x/identicon/svg?seed=satoshi_hunter",
+      verified: true,
+      exchange: "Binance",
+      winRate: 84,
+      pnl: "+324.5%",
+      pnlPositive: true
+    },
+    coin: "BTC",
+    coinName: "Bitcoin",
+    direction: "LONG",
+    target: "$74,500",
+    timeframe: "12ч",
+    text: "Биткоин тестирует ключевой уровень поддержки на 4H таймфрейме. Наблюдаем сильный откуп от зоны покупателя и формирование бычьего поглощения. Ожидаю продолжения восходящего движения к целям в районе $74,500 в ближайшие дни.",
+    chartData: [
+      {t: 0, p: 67300},
+      {t: 2, p: 67100},
+      {t: 4, p: 67600},
+      {t: 6, p: 68200},
+      {t: 8, p: 67900},
+      {t: 10, p: 69100},
+      {t: 12, p: 69800},
+      {t: 14, p: 70900}
+    ],
+    images: [],
+    currentPrice: "$69,820",
+    priceChange: "+2.4%",
+    positive: true,
+    likes: 56,
+    comments: 14,
+    reposts: 8,
+    timeAgo: "6ч назад",
+    accuracy: "93% win",
+    liked: false
+  },
+  {
+    id: "post_seed_2",
+    user: {
+      id: "seeder_2",
+      username: "eth_whale",
+      displayName: "Ethereum Whale",
+      avatar: "https://api.dicebear.com/7.x/identicon/svg?seed=eth_whale",
+      verified: false,
+      exchange: "Bybit",
+      winRate: 72,
+      pnl: "+112.3%",
+      pnlPositive: true
+    },
+    coin: "ETH",
+    coinName: "Ethereum",
+    direction: "SHORT",
+    target: "$3,240",
+    timeframe: "24ч",
+    text: "Эфириум показывает слабость после ложного пробития уровня сопротивления $3,600. RSI на часовом графике перекуплен, объемы падают. Открываю шорт позицию с близким стопом. Цель снижения лежит на уровне локальной поддержки $3,240.",
+    chartData: [
+      {t: 0, p: 3580},
+      {t: 2, p: 3595},
+      {t: 4, p: 3550},
+      {t: 6, p: 3490},
+      {t: 8, p: 3420},
+      {t: 10, p: 3445},
+      {t: 12, p: 3380}
+    ],
+    images: [],
+    currentPrice: "$3,380",
+    priceChange: "-4.12%",
+    positive: false,
+    likes: 28,
+    comments: 9,
+    reposts: 3,
+    timeAgo: "8ч назад",
+    accuracy: "81% win",
+    liked: false
+  },
+  {
+    id: "post_seed_3",
+    user: {
+      id: "seeder_3",
+      username: "sol_enjoyer",
+      displayName: "Solana Enjoyer",
+      avatar: "https://api.dicebear.com/7.x/identicon/svg?seed=sol_enjoyer",
+      verified: true,
+      exchange: "OKX",
+      winRate: 79,
+      pnl: "+580.4%",
+      pnlPositive: true
+    },
+    coin: "SOL",
+    coinName: "Solana",
+    direction: "LONG",
+    target: "$195.0",
+    timeframe: "3дня",
+    text: "SOL выглядит невероятно сильно. Сформирован бычий вымпел на дневном графике. Видим пробитие верхней границы паттерна на повышенных объемах. При закреплении выше $170 открыта дорога к круглому значению $200. Локальная цель на $195.",
+    chartData: [
+      {t: 0, p: 142.5},
+      {t: 2, p: 148.0},
+      {t: 4, p: 151.2},
+      {t: 6, p: 159.4},
+      {t: 8, p: 168.1},
+      {t: 10, p: 172.5}
+    ],
+    images: [],
+    currentPrice: "$172.50",
+    priceChange: "+12.18%",
+    positive: true,
+    likes: 84,
+    comments: 22,
+    reposts: 19,
+    timeAgo: "1д назад",
+    accuracy: "90% win",
+    liked: false
+  }
+];
+
 export function getFallbackPosts(): FeedPostShape[] {
   try {
     const raw = localStorage.getItem(USER_POSTS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+    return DEFAULT_SEED_POSTS;
   } catch (e) {
-    return [];
+    return DEFAULT_SEED_POSTS;
   }
 }
 

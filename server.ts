@@ -3,6 +3,29 @@ import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
 
+// Dynamically write VITE_ variables from process.env to .env so they are embedded in the bundle
+try {
+  const envFile = path.resolve(process.cwd(), '.env');
+  const envVars: string[] = [];
+  
+  for (const key of Object.keys(process.env)) {
+    if (key.startsWith("VITE_") || key === "GEMINI_API_KEY" || key === "APP_URL") {
+      envVars.push(`${key}="${process.env[key]}"`);
+    }
+  }
+
+  console.log("Process env VITE_ keys found:", Object.keys(process.env).filter(k => k.startsWith("VITE_")));
+
+  if (envVars.length > 0) {
+    fs.writeFileSync(envFile, envVars.join('\n'), 'utf-8');
+    console.log('Successfully wrote process.env variables to .env file for the application.');
+  } else {
+    console.warn('No VITE_ variables found in process.env!');
+  }
+} catch (e) {
+  console.error('Warning: could not write VITE_ vars to .env in server.ts:', e);
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -70,6 +93,57 @@ async function startServer() {
     if (vote === 'bearish') sentiments[coin].bearish += 1;
     saveSentiments(sentiments);
     res.json(sentiments[coin]);
+  });
+
+  // CoinGecko Proxy with simple in-memory cache to bypass CORS and prevent 429 rate limits
+  const coingeckoCache = new Map<string, { data: any; timestamp: number }>();
+  const CACHE_TTL = 30000; // 30 seconds caching is more than enough to stop spam
+
+  app.get("/api/coingecko/*", async (req, res) => {
+    try {
+      const targetPath = (req.params as any)[0];
+      const queryParams = new URLSearchParams(req.query as Record<string, string>).toString();
+      const targetUrl = `https://api.coingecko.com/api/v3/${targetPath}${queryParams ? '?' + queryParams : ''}`;
+      
+      const cacheKey = targetUrl;
+      const cached = coingeckoCache.get(cacheKey);
+      if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+        return res.json(cached.data);
+      }
+
+      const response = await fetch(targetUrl, {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+      
+      if (!response.ok) {
+        if (response.status === 429) {
+          if (cached) {
+            console.warn(`[CoinGecko Proxy] 429 rate limit hit, serving cached data for ${targetPath}`);
+            return res.json(cached.data);
+          }
+          return res.status(429).json({ error: "CoinGecko API rate limit exceeded. Please retry shortly." });
+        }
+        throw new Error(`CoinGecko responded with HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      coingeckoCache.set(cacheKey, { data, timestamp: Date.now() });
+      res.json(data);
+    } catch (err: any) {
+      console.error("[CoinGecko Proxy] Error:", err.message);
+      // Try to recover with Cache even if expired
+      const targetPath = (req.params as any)[0];
+      const queryParams = new URLSearchParams(req.query as Record<string, string>).toString();
+      const targetUrl = `https://api.coingecko.com/api/v3/${targetPath}${queryParams ? '?' + queryParams : ''}`;
+      const cached = coingeckoCache.get(targetUrl);
+      if (cached) {
+        return res.json(cached.data);
+      }
+      res.status(500).json({ error: err.message || "Failed to fetch from CoinGecko" });
+    }
   });
 
   // Global News Mock Area

@@ -1,5 +1,6 @@
 import { projectId, publicAnonKey, isEdgeFunctionOnline } from "../../../utils/supabase/info";
 import { COIN_MAP } from "../hooks/useMarketPrices";
+import { resolveCoinGeckoUrl } from "./coingecko";
 
 const API_BASE = `https://${projectId}.supabase.co/functions/v1/make-server-6d3e2891`;
 
@@ -134,7 +135,7 @@ async function fetchFromCoinGecko(
   if (!geckoId) return null;
   try {
     const days = coinGeckoDays(timeframe);
-    const url = `https://api.coingecko.com/api/v3/coins/${geckoId}/ohlc?vs_currency=usd&days=${days}`;
+    const url = resolveCoinGeckoUrl(`https://api.coingecko.com/api/v3/coins/${geckoId}/ohlc?vs_currency=usd&days=${days}`);
     const r = await fetch(url);
     if (!r.ok) return null;
     const rows = (await r.json()) as unknown;

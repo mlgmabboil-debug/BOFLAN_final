@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { resolveCoinGeckoUrl } from '../utils/coingecko'
 
 // CoinGecko ID mappings for popular coins
 export const COIN_MAP = {
@@ -259,7 +260,7 @@ export function useMarketPrices() {
         url = `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(search)}`
       }
 
-      const response = await fetch(url, {
+      const response = await fetch(resolveCoinGeckoUrl(url), {
         headers: {
           'Accept': 'application/json',
         }
@@ -338,7 +339,7 @@ export function useMarketPrices() {
     try {
       const topCoins = ['bitcoin', 'ethereum', 'binancecoin', 'solana', 'cardano']
       const response = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${topCoins.join(',')}&vs_currencies=usd&include_24hr_change=true`,
+        resolveCoinGeckoUrl(`https://api.coingecko.com/api/v3/simple/price?ids=${topCoins.join(',')}&vs_currencies=usd&include_24hr_change=true`),
         {
           headers: {
             'Accept': 'application/json',

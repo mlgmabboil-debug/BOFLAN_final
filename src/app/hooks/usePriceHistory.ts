@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { PriceHistory } from './useMarketPrices'
+import { resolveCoinGeckoUrl } from '../utils/coingecko'
 
 export function usePriceHistory(symbol: string, timeframe: '1h' | '4h' | '1d' | '1w' | '1m' = '1d') {
   const [history, setHistory] = useState<PriceHistory[]>([])
@@ -25,7 +26,7 @@ export function usePriceHistory(symbol: string, timeframe: '1h' | '4h' | '1d' | 
       }[timeframe] || 1
 
       const response = await fetch(
-        `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`,
+        resolveCoinGeckoUrl(`https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`),
         {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',

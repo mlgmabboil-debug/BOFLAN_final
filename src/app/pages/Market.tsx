@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router";
 import { MARKET_COINS } from "../data/mockData";
 import { MiniChart } from "../components/MiniChart";
+import { resolveCoinGeckoUrl } from "../utils/coingecko";
 import { useMarketPrices, formatPrice, formatVolume, getCustomCoins, saveCustomCoins } from "../hooks/useMarketPrices";
 import {
   TrendingUp, TrendingDown, Search, ArrowUpDown,
@@ -100,7 +101,7 @@ export function Market() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("https://api.coingecko.com/api/v3/global")
+    fetch(resolveCoinGeckoUrl("https://api.coingecko.com/api/v3/global"))
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((g: { data?: Record<string, unknown> }) => {
         const d = g.data as {
@@ -127,7 +128,7 @@ export function Market() {
           setGlobalMcapCh24(null);
         }
       });
-    fetch("https://api.coingecko.com/api/v3/global/decentralized_finance_defi")
+    fetch(resolveCoinGeckoUrl("https://api.coingecko.com/api/v3/global/decentralized_finance_defi"))
       .then((r) => (r.ok ? r.json() : null))
       .then((j: { data?: { defi_market_cap?: number } } | null) => {
         if (cancelled || !j?.data?.defi_market_cap) return;

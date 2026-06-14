@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { resolveCoinGeckoUrl } from "../utils/coingecko";
 
 export type ChartPoint = { timestamp: number; price: number; time: string };
 
@@ -43,9 +44,9 @@ async function fetchCoinGecko(
   days: number,
   maxPoints: number
 ): Promise<ChartPoint[] | null> {
-  const url = `https://api.coingecko.com/api/v3/coins/${encodeURIComponent(
+  const url = resolveCoinGeckoUrl(`https://api.coingecko.com/api/v3/coins/${encodeURIComponent(
     coinId
-  )}/market_chart?vs_currency=usd&days=${days}&precision=full`;
+  )}/market_chart?vs_currency=usd&days=${days}&precision=full`);
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {

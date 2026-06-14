@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { COIN_MAP } from "./useMarketPrices";
+import { resolveCoinGeckoUrl } from "../utils/coingecko";
 
 export type SparkPoint = { t: number; p: number };
 
@@ -24,7 +25,7 @@ export function useCoinSparkline(symbol: string | undefined, maxPoints = 48): Sp
 
     let cancelled = false;
     fetch(
-      `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=1`
+      resolveCoinGeckoUrl(`https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=1`)
     )
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((j: { prices?: [number, number][] }) => {
