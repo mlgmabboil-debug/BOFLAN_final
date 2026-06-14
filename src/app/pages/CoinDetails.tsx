@@ -20,6 +20,10 @@ export default function CoinDetails() {
   const [posts, setPosts] = useState<FeedPostShape[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
 
+  // News State
+  const [news, setNews] = useState<any[]>([]);
+  const [loadingNews, setLoadingNews] = useState(true);
+
   // Sentiment State
   const [sentiment, setSentiment] = useState({ bullish: 0, bearish: 0 });
   const [userVote, setUserVote] = useState<'bullish' | 'bearish' | null>(() => {
@@ -55,6 +59,18 @@ export default function CoinDetails() {
         setSentiment({ bullish: data.bullish || 0, bearish: data.bearish || 0 });
       })
       .catch(console.error);
+
+    setLoadingNews(true);
+    fetch(`/api/news/${upperSymbol}`)
+      .then(res => res.json())
+      .then(data => {
+        setNews(data);
+        setLoadingNews(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoadingNews(false);
+      });
 
     fetchFeedPosts().then((allPosts) => {
       // Filter for this coin specifically
@@ -157,15 +173,51 @@ export default function CoinDetails() {
           </div>
         </div>
 
-        {/* Global info/News mock area */}
-        <div className="bg-gradient-to-r from-[#0052D4]/20 to-[#4364F7]/20 border border-[#4364F7]/30 rounded-xl p-6 relative overflow-hidden">
-          <h3 className="text-white font-bold flex items-center gap-2 mb-2">
-            <span className="text-xl">🔥</span> Особенности токена
+        {/* News Area */}
+        <div className="bg-[#111111] rounded-xl border border-[#1e1e1e] p-6">
+          <h3 className="text-white font-bold flex items-center gap-2 mb-4">
+            <span>📰</span> Последние новости: {coinData.name}
           </h3>
-          <p className="text-white/80 text-sm leading-relaxed max-w-2xl relative z-10">
-            Этот токен активно торгуется на крупнейших биржах и обладает огромной ликвидностью.
-            Следите за мнением сообщества справа, чтобы быстро принимать торговые решения!
-          </p>
+          {loadingNews ? (
+            <div className="flex items-center justify-center py-6">
+              <RefreshCw className="animate-spin text-white/50" size={20} />
+            </div>
+          ) : news.length === 0 ? (
+            <p className="text-white/50 text-sm">Нет свежих новостей для этого актива.</p>
+          ) : (
+            <div className="space-y-4">
+              {news.map((item: any) => (
+                <a 
+                  key={item.id} 
+                  href={item.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="block p-4 rounded-lg bg-[#161616] border border-[#222222] hover:border-[#333333] transition-colors group"
+                >
+                  <div className="flex gap-4">
+                    {item.imageurl && (
+                      <img 
+                        src={item.imageurl} 
+                        alt="" 
+                        className="w-16 h-16 object-cover rounded bg-[#222]" 
+                        referrerPolicy="no-referrer"
+                      />
+                    )}
+                    <div className="flex-1">
+                      <h4 className="text-white font-medium text-sm group-hover:text-blue-400 transition-colors line-clamp-2">
+                        {item.title}
+                      </h4>
+                      <div className="flex items-center gap-2 mt-2 text-xs text-white/40">
+                        {item.source_info?.name && <span>{item.source_info.name}</span>}
+                        <span>•</span>
+                        <span>{new Date(item.published_on * 1000).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

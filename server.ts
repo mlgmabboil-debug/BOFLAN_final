@@ -72,6 +72,76 @@ async function startServer() {
     res.json(sentiments[coin]);
   });
 
+  // Global News Mock Area
+  app.get("/api/news/:coin", async (req, res) => {
+    try {
+      const coin = req.params.coin.toUpperCase();
+      const response = await fetch(`https://min-api.cryptocompare.com/data/v2/news/?categories=${coin}`);
+      const data = await response.json();
+      res.json(data?.Data?.slice(0, 10) || []);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json([]);
+    }
+  });
+
+  // REST API for chat messages
+  const CHAT_FILE = path.join(process.cwd(), "chat_storage.json");
+  const getChatMessages = () => {
+    try {
+      if (fs.existsSync(CHAT_FILE)) {
+        return JSON.parse(fs.readFileSync(CHAT_FILE, "utf-8"));
+      }
+    } catch (err) {
+      console.error("Error reading chat file:", err);
+    }
+    return {};
+  };
+
+  const saveChatMessages = (data: any) => {
+    try {
+      fs.writeFileSync(CHAT_FILE, JSON.stringify(data, null, 2));
+    } catch (err) {
+      console.error("Error writing chat file:", err);
+    }
+  };
+
+  app.get("/api/chat/:groupId/messages", (req, res) => {
+    const groupId = req.params.groupId;
+    const chats = getChatMessages();
+    res.json({ success: true, messages: chats[groupId] || [] });
+  });
+
+  app.post("/api/chat/:groupId/messages", (req, res) => {
+    const groupId = req.params.groupId;
+    const msg = req.body;
+    
+    if (!msg || !msg.userId || !msg.text) {
+      return res.status(400).json({ success: false, error: "Invalid message format" });
+    }
+
+    const chats = getChatMessages();
+    if (!chats[groupId]) chats[groupId] = [];
+    
+    const newMsg = {
+      id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      groupId,
+      userId: msg.userId,
+      username: msg.username || 'System',
+      avatar: msg.avatar || null,
+      text: msg.text,
+      timestamp: Date.now(),
+      isGuest: Boolean(msg.isGuest),
+      type: msg.type || 'text',
+      signalData: msg.signalData || null
+    };
+
+    chats[groupId].push(newMsg);
+    saveChatMessages(chats);
+    
+    res.json({ success: true, message: newMsg });
+  });
+
   // REST API for posts
   app.get("/api/posts", (req, res) => {
     const posts = getStoredPosts();

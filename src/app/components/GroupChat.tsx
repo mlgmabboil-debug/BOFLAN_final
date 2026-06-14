@@ -151,25 +151,8 @@ export function GroupChat({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const fetchMessages = useCallback(async () => {
-    const isSupabaseValid = projectId && !projectId.includes("undefined") && projectId !== "";
-    if (!isSupabaseValid || !(await isEdgeFunctionOnline(API_BASE, publicAnonKey))) {
-      const local = getLocalMessages(groupId);
-      setMessages(local);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-      const resp = await fetch(`${API_BASE}/chat/${groupId}/messages`, {
-        headers: { Authorization: `Bearer ${publicAnonKey}` },
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-
+      const resp = await fetch(`/api/chat/${groupId}/messages`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const json = await resp.json();
       if (json.success) {
@@ -220,30 +203,10 @@ export function GroupChat({
       isGuest: user.isGuest,
     };
 
-    const isSupabaseValid = projectId && !projectId.includes("undefined") && projectId !== "";
-    if (!isSupabaseValid) {
-      const current = getLocalMessages(groupId);
-      const updated = [...current, optimistic];
-      saveLocalMessages(groupId, updated);
-      setMessages(updated);
-      setSending(false);
-      if (inputRef.current) inputRef.current.focus();
-      return;
-    }
-
-    setMessages((prev) => [...prev, optimistic]);
-
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3500);
-
-      const resp = await fetch(`${API_BASE}/chat/${groupId}/messages`, {
+      const resp = await fetch(`/api/chat/${groupId}/messages`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${publicAnonKey}`,
-          "Content-Type": "application/json",
-        },
-        signal: controller.signal,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user.id,
           username: user.username,
@@ -252,7 +215,6 @@ export function GroupChat({
           isGuest: user.isGuest,
         }),
       });
-      clearTimeout(timeoutId);
 
       const json = await resp.json();
       if (!json.success) throw new Error(json.error);
@@ -333,28 +295,10 @@ export function GroupChat({
       symbol: '', direction: 'buy', entryPrice: '', targetPrice: '', stopLoss: '', confidence: 80
     });
 
-    const isSupabaseValid = projectId && !projectId.includes("undefined") && projectId !== "";
-    if (!isSupabaseValid) {
-      const current = getLocalMessages(groupId);
-      const updated = [...current, signalMsg];
-      saveLocalMessages(groupId, updated);
-      setMessages(updated);
-      return;
-    }
-
-    setMessages(prev => [...prev, signalMsg]);
-
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3500);
-
-      const resp = await fetch(`${API_BASE}/chat/${groupId}/messages`, {
+      const resp = await fetch(`/api/chat/${groupId}/messages`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${publicAnonKey}`,
-          "Content-Type": "application/json",
-        },
-        signal: controller.signal,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user.id,
           username: user.username,
@@ -365,8 +309,13 @@ export function GroupChat({
           signalData: signalMsg.signalData,
         }),
       });
-      clearTimeout(timeoutId);
       if (!resp.ok) throw new Error('Failed');
+      
+      const json = await resp.json();
+      if (!json.success) throw new Error(json.error);
+      setMessages((prev) =>
+        prev.map((m) => (m.id === signalMsg.id ? json.message : m))
+      );
     } catch {
       console.warn('Signal send Failed to sync with server, keeping locally.');
       const current = getLocalMessages(groupId).filter(m => m.id !== signalMsg.id);
