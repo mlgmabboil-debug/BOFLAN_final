@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Send, X, MessageCircle, Loader, UserCircle, TrendingUp, AtSign, Hash, Zap } from "lucide-react";
 import { BoflanLogoLoader } from "./BoflanLogoLoader";
 import { projectId, publicAnonKey, isEdgeFunctionOnline } from "../../../utils/supabase/info";
+import { supabase } from "../utils/supabase";
 import { useUser } from "../context/UserContext";
 import { sanitizeAvatarUrl, sanitizePlainText } from "../utils/sanitize";
 
@@ -152,17 +153,38 @@ export function GroupChat({
 
   const fetchMessages = useCallback(async () => {
     try {
-      const resp = await fetch(`/api/chat/${groupId}/messages`);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const json = await resp.json();
-      if (json.success) {
-        setMessages(json.messages || []);
-        saveLocalMessages(groupId, json.messages || []);
-      } else {
-        throw new Error(json.error);
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('group_id', groupId)
+        .order('created_at', { ascending: true })
+        .limit(100);
+
+      if (error) {
+         if (error.code === '42P01') {
+            console.warn("Table chat_messages does not exist yet. Please manually run the SQL schema migration.");
+         }
+         throw error;
+      }
+      
+      if (data) {
+        const formattedMessages = data.map(m => ({
+          id: m.id,
+          groupId: m.group_id,
+          userId: m.user_id,
+          username: m.username,
+          avatar: m.avatar,
+          text: m.text,
+          timestamp: new Date(m.created_at).getTime(),
+          isGuest: m.is_guest,
+          type: m.type as any,
+          signalData: m.signal_data
+        }));
+        setMessages(formattedMessages);
+        saveLocalMessages(groupId, formattedMessages);
       }
       setError(null);
-    } catch {
+    } catch (err) {
       console.warn("Chat fetch failed, pulling local chat messages");
       const local = getLocalMessages(groupId);
       setMessages(local);
@@ -204,23 +226,39 @@ export function GroupChat({
     };
 
     try {
-      const resp = await fetch(`/api/chat/${groupId}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user.id,
-          username: user.username,
-          avatar: user.avatar || null,
-          text,
-          isGuest: user.isGuest,
-        }),
-      });
-
-      const json = await resp.json();
-      if (!json.success) throw new Error(json.error);
-      setMessages((prev) =>
-        prev.map((m) => (m.id === optimistic.id ? json.message : m))
-      );
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .insert({
+           group_id: groupId,
+           user_id: user.id,
+           username: user.username,
+           avatar: user.avatar || null,
+           text,
+           is_guest: user.isGuest,
+           type: 'text'
+        })
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      if (data) {
+        const confirmed: ChatMessage = {
+            id: data.id,
+            groupId: data.group_id,
+            userId: data.user_id,
+            username: data.username,
+            avatar: data.avatar,
+            text: data.text,
+            timestamp: new Date(data.created_at).getTime(),
+            isGuest: data.is_guest,
+            type: data.type as any,
+            signalData: data.signal_data
+        };
+        setMessages((prev) =>
+          prev.map((m) => (m.id === optimistic.id ? confirmed : m))
+        );
+      }
     } catch {
       console.warn("Message send failed server-side, preserving locally");
       const current = getLocalMessages(groupId).filter(m => m.id !== optimistic.id);
@@ -296,26 +334,40 @@ export function GroupChat({
     });
 
     try {
-      const resp = await fetch(`/api/chat/${groupId}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user.id,
-          username: user.username,
-          avatar: user.avatar || null,
-          text: signalMsg.text,
-          isGuest: user.isGuest,
-          type: 'signal',
-          signalData: signalMsg.signalData,
-        }),
-      });
-      if (!resp.ok) throw new Error('Failed');
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .insert({
+           group_id: groupId,
+           user_id: user.id,
+           username: user.username,
+           avatar: user.avatar || null,
+           text: signalMsg.text,
+           is_guest: user.isGuest,
+           type: 'signal',
+           signal_data: signalMsg.signalData
+        })
+        .select()
+        .single();
+        
+      if (error) throw error;
       
-      const json = await resp.json();
-      if (!json.success) throw new Error(json.error);
-      setMessages((prev) =>
-        prev.map((m) => (m.id === signalMsg.id ? json.message : m))
-      );
+      if (data) {
+        const confirmed: ChatMessage = {
+            id: data.id,
+            groupId: data.group_id,
+            userId: data.user_id,
+            username: data.username,
+            avatar: data.avatar,
+            text: data.text,
+            timestamp: new Date(data.created_at).getTime(),
+            isGuest: data.is_guest,
+            type: data.type as any,
+            signalData: data.signal_data
+        };
+        setMessages((prev) =>
+          prev.map((m) => (m.id === signalMsg.id ? confirmed : m))
+        );
+      }
     } catch {
       console.warn('Signal send Failed to sync with server, keeping locally.');
       const current = getLocalMessages(groupId).filter(m => m.id !== signalMsg.id);

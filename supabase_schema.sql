@@ -200,3 +200,24 @@ DROP POLICY IF EXISTS "Aesthetic Public Image Insert" ON storage.objects;
 CREATE POLICY "Aesthetic Public Image Insert" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'post-images');
 DROP POLICY IF EXISTS "Aesthetic Public Image Modify" ON storage.objects;
 CREATE POLICY "Aesthetic Public Image Modify" ON storage.objects FOR UPDATE WITH CHECK (bucket_id = 'post-images');
+
+-- 13. Create Chat Messages Table for Group Chat
+CREATE TABLE IF NOT EXISTS public.chat_messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    group_id VARCHAR(255) NOT NULL,
+    user_id UUID NOT NULL REFERENCES public.user_profiles(user_id) ON DELETE CASCADE,
+    username VARCHAR(255),
+    avatar VARCHAR(255),
+    text TEXT NOT NULL,
+    is_guest BOOLEAN DEFAULT FALSE,
+    type VARCHAR(50) DEFAULT 'text',
+    signal_data JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow All Select chat_messages" ON public.chat_messages;
+CREATE POLICY "Allow All Select chat_messages" ON public.chat_messages FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow All Insert/Update chat_messages" ON public.chat_messages;
+CREATE POLICY "Allow All Insert/Update chat_messages" ON public.chat_messages FOR ALL USING (true);
