@@ -3,6 +3,7 @@ import { RouterProvider } from "react-router";
 import { router } from "./routes";
 import { UserProvider, useUser } from "./context/UserContext";
 import { Web3ModalProvider } from "./components/Web3Modal";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const Onboarding = lazy(() =>
   import("./pages/Onboarding").then((mod) => ({ default: mod.Onboarding }))
@@ -29,8 +30,10 @@ function AppInner() {
 
 export default function App() {
   return (
-    <UserProvider>
-      <AppInner />
-    </UserProvider>
+    <ErrorBoundary>
+      <UserProvider>
+        <AppInner />
+      </UserProvider>
+    </ErrorBoundary>
   );
 }

@@ -135,7 +135,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const setUser = (u: AppUser) => {
     const safe = normalizeUserForSave(u);
     setUserState(safe);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(safe));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(safe));
+    } catch (e) {
+      console.warn("localStorage.setItem failed", e);
+    }
     const isSupabaseValid = projectId && !projectId.includes("undefined") && projectId !== "";
     if (isSupabaseValid) {
       fetch(`${API_BASE}/notifications/${safe.id}/seed`, {
@@ -147,7 +151,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUserState(null);
-    localStorage.removeItem(STORAGE_KEY);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {}
   };
 
   return (

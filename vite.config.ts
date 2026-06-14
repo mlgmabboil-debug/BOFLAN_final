@@ -1,4 +1,3 @@
-import { VitePWA } from 'vite-plugin-pwa';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -16,29 +15,6 @@ export default defineConfig(() => {
           Buffer: true,
         },
       }),
-      VitePWA({
-        registerType: 'autoUpdate',
-        includeAssets: ['icon.svg'],
-        workbox: {
-          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024
-        },
-        manifest: {
-          name: 'BOFLAN',
-          short_name: 'BOFLAN',
-          description: 'Крипто-социальная сеть и терминал BOFLAN',
-          theme_color: '#0a0a0a',
-          background_color: '#0a0a0a',
-          display: 'standalone',
-          icons: [
-            {
-              src: '/icon.svg',
-              sizes: '512x512',
-              type: 'image/svg+xml',
-              purpose: 'any maskable'
-            }
-          ]
-        }
-      })
     ],
     resolve: {
       alias: {

@@ -168,7 +168,7 @@ export function GroupChat({
       }
       
       if (data) {
-        const formattedMessages = data.map(m => ({
+        const formattedMessages = data.map((m: any) => ({
           id: m.id,
           groupId: m.group_id,
           userId: m.user_id,
