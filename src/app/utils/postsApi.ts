@@ -334,3 +334,67 @@ export async function createServerPost(
     return mockPost;
   }
 }
+
+export async function syncLocalPostsToSupabase(user: { id: string; username: string; displayName: string; avatar: string; verified: boolean }) {
+  try {
+    const raw = localStorage.getItem(USER_POSTS_KEY);
+    if (!raw) return;
+    const localPosts: FeedPostShape[] = JSON.parse(raw);
+    if (!Array.isArray(localPosts) || localPosts.length === 0) return;
+
+    // Filter posts that are local-only (e.g. have a custom/non-UUID id or start with user_)
+    const localOnlyPosts = localPosts.filter(p => p.id.startsWith("user_") || !p.id.includes("-"));
+    if (localOnlyPosts.length === 0) return;
+
+    console.log(`Syncing ${localOnlyPosts.length} local posts to Supabase...`);
+
+    // Ensure user profile exists in database
+    await supabase.from('user_profiles').upsert({
+      user_id: user.id,
+      username: user.username,
+      display_name: user.displayName,
+      avatar_url: user.avatar,
+      verified: user.verified
+    }, { onConflict: 'user_id' });
+
+    // Insert them one by one
+    for (const post of localOnlyPosts) {
+      const { data, error } = await supabase.from('posts').insert({
+        user_id: user.id,
+        coin: post.coin,
+        coin_name: post.coinName,
+        direction: post.direction,
+        target: post.target,
+        timeframe: post.timeframe,
+        text: post.text,
+        chart_data: post.chartData,
+        images: post.images,
+        current_price: post.currentPrice,
+        price_change: post.priceChange,
+        positive: post.positive,
+        likes: post.likes || 0,
+        comments: post.comments || 0,
+        reposts: post.reposts || 0,
+        accuracy: post.accuracy
+      }).select('*').single();
+
+      if (error) {
+        console.error("Failed to sync local post:", error);
+      } else if (data) {
+        const parsedSynced = mapRawPostToFeedShape(data);
+        if (parsedSynced) {
+          const index = localPosts.findIndex(p => p.id === post.id);
+          if (index !== -1) {
+            localPosts[index] = parsedSynced;
+          }
+        }
+      }
+    }
+
+    // Save updated posts back to localStorage
+    localStorage.setItem(USER_POSTS_KEY, JSON.stringify(localPosts));
+  } catch (e) {
+    console.warn("syncLocalPostsToSupabase failed safely:", e);
+  }
+}
+

@@ -63,14 +63,45 @@ function sanitizeProfileSecret(input: unknown): string | undefined {
   return t;
 }
 
+function generateUUID(): string {
+  try {
+    return crypto.randomUUID();
+  } catch (e) {
+    return '00000000-0000-4000-8000-' + String(Date.now() + Math.floor(Math.random() * 100000)).padStart(12, '0');
+  }
+}
+
+function isValidUUID(str: string): boolean {
+  const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return regex.test(str);
+}
+
 /** Восстановление пользователя из localStorage без доверия к подделанным полям. */
 function parseStoredUser(json: string): AppUser | null {
   try {
     const o = JSON.parse(json) as Record<string, unknown>;
     if (!o || typeof o !== "object") return null;
-    const id = typeof o.id === "string" ? o.id.replace(/[^\w-]/g, "").slice(0, 80) : "";
+    let id = typeof o.id === "string" ? o.id.replace(/[^\w-]/g, "").slice(0, 80) : "";
     const username = sanitizeUsername(o.username, 32);
     if (!id || !username) return null;
+
+    // Migrate non-UUID ID to strict UUID
+    if (!isValidUUID(id)) {
+      const oldId = id;
+      id = generateUUID();
+      try {
+        const oldPortfolioKey = `boflan_portfolio_${oldId}`;
+        const newPortfolioKey = `boflan_portfolio_${id}`;
+        const portfolioData = localStorage.getItem(oldPortfolioKey);
+        if (portfolioData) {
+          localStorage.setItem(newPortfolioKey, portfolioData);
+          localStorage.removeItem(oldPortfolioKey);
+        }
+      } catch (e) {
+        console.warn("Portfolio migration failed:", e);
+      }
+    }
+
     const av = sanitizeAvatarUrl(o.avatar);
     return {
       id,
@@ -103,7 +134,7 @@ function normalizeUserForSave(u: AppUser): AppUser {
   const rawId = typeof u.id === "string" ? u.id : "";
   return {
     ...u,
-    id: rawId.replace(/[^\w-]/g, "").slice(0, 80) || `user_${Date.now()}`,
+    id: isValidUUID(rawId) ? rawId : generateUUID(),
     username,
     displayName: sanitizePlainText(u.displayName, 64) || username,
     avatar: av || diceAvatar(username),
@@ -126,7 +157,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<AppUser | null>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? parseStoredUser(saved) : null;
+      if (saved) {
+        const parsed = parseStoredUser(saved);
+        if (parsed) {
+          // If parsed modified the ID to UUID, persist the update back to localStorage
+          const oldObj = JSON.parse(saved);
+          if (oldObj.id !== parsed.id) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+          }
+          return parsed;
+        }
+      }
+      return null;
     } catch {
       return null;
     }
@@ -199,7 +241,7 @@ export function createGuestUser(): AppUser {
 export function createRegisteredUser(username: string, exchange?: string): AppUser {
   const u = sanitizeUsername(username, 32) || "user";
   return {
-    id: `user_${Date.now()}`,
+    id: generateUUID(),
     username: u,
     displayName: u,
     avatar: diceAvatar(u),

@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import type { FeedPostShape } from "../app/utils/feedPosts";
-import { createServerPost, fetchFeedPosts } from "../app/utils/postsApi";
+import { createServerPost, fetchFeedPosts, syncLocalPostsToSupabase } from "../app/utils/postsApi";
+import { useUser } from "../app/context/UserContext";
 
 export function useSupabasePosts() {
+  const { user } = useUser();
   const [posts, setPosts] = useState<FeedPostShape[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -11,6 +13,9 @@ export function useSupabasePosts() {
     setLoading(true);
     setError(null);
     try {
+      if (user) {
+        await syncLocalPostsToSupabase(user);
+      }
       const list = await fetchFeedPosts();
       setPosts(list);
       if (list.length === 0) {
