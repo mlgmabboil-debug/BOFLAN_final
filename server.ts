@@ -216,61 +216,131 @@ async function startServer() {
     res.json({ success: true, message: newMsg });
   });
 
-  // REST API for posts
-  app.get("/api/posts", (req, res) => {
-    const posts = getStoredPosts();
-    const userId = req.query.userId;
-    if (userId) {
-      const filtered = posts.filter((p: any) => p.user_id === userId);
-      return res.json(filtered);
+  // REST API for posts via Postgres/CloudSQL
+  app.get("/api/posts", async (req, res) => {
+    try {
+      const { db } = await import("./src/db/db.ts");
+      const { posts, profiles } = await import("./src/db/schema.ts");
+      const { desc, eq } = await import("drizzle-orm");
+
+      let query = db
+        .select({
+          post: posts,
+          profile: profiles,
+        })
+        .from(posts)
+        .leftJoin(profiles, eq(posts.userId, profiles.id))
+        .orderBy(desc(posts.createdAt));
+
+      const userId = req.query.userId as string;
+      // Note: If you want to filter by userId, you could add:
+      // if (userId) { query = query.where(eq(posts.userId, userId)); }
+
+      const results = await query;
+
+      const formattedPosts = results.map(({ post, profile }) => {
+        return {
+          id: post.id,
+          created_at: post.createdAt,
+          user_id: post.userId,
+          coin: post.coin,
+          coin_name: post.coinName,
+          direction: post.direction,
+          target: post.target,
+          timeframe: post.timeframe,
+          text: post.text,
+          chart_data: post.chartData,
+          images: post.images,
+          current_price: post.currentPrice,
+          price_change: post.priceChange,
+          positive: post.positive,
+          likes: post.likesCount,
+          comments: post.commentsCount,
+          reposts: post.repostsCount,
+          accuracy: post.accuracy,
+          user_profiles: profile ? {
+            username: profile.username,
+            display_name: profile.displayName,
+            avatar_url: profile.avatarUrl,
+            verified: profile.verified,
+            exchange: profile.exchange,
+            win_rate: profile.winRate,
+            pnl: profile.pnl,
+            pnl_positive: profile.pnlPositive,
+          } : null,
+        };
+      });
+
+      if (userId) {
+        return res.json(formattedPosts.filter(p => p.user_id === userId));
+      }
+
+      res.json(formattedPosts);
+    } catch (err: any) {
+      console.error("Error fetching posts from db:", err);
+      res.status(500).json({ error: "Failed to fetch posts" });
     }
-    res.json(posts);
   });
 
-  app.post("/api/posts", (req, res) => {
+  app.post("/api/posts", async (req, res) => {
     const { post, userId } = req.body;
     if (!post || !userId) {
       return res.status(400).json({ error: "Missing post or userId" });
     }
 
-    const posts = getStoredPosts();
-    
-    const rawPost = {
-      id: `server_${Date.now()}__${Math.random().toString(36).slice(2, 9)}`,
-      created_at: new Date().toISOString(),
-      user_id: userId,
-      coin: post.coin,
-      coin_name: post.coinName,
-      direction: post.direction,
-      target: post.target,
-      timeframe: post.timeframe,
-      text: post.text,
-      chart_data: post.chartData,
-      images: post.images,
-      current_price: post.currentPrice,
-      price_change: post.priceChange,
-      positive: post.positive,
-      likes: post.likes || 0,
-      comments: post.comments || 0,
-      reposts: post.reposts || 0,
-      accuracy: post.accuracy,
-      user_profiles: {
-        user_id: userId,
-        username: post.user.username,
-        display_name: post.user.displayName,
-        avatar_url: post.user.avatar,
-        verified: post.user.verified,
-        exchange: post.user.exchange,
-        win_rate: post.user.winRate,
-        pnl: post.user.pnl,
-        pnl_positive: post.user.pnlPositive
+    try {
+      const { db } = await import("./src/db/db.ts");
+      const { posts, profiles } = await import("./src/db/schema.ts");
+
+      // Verify or create profile safely to ensure FK succeeds
+      if (post.user) {
+        await db.insert(profiles).values({
+          id: userId,
+          username: post.user.username || 'user',
+          displayName: post.user.displayName,
+          avatarUrl: post.user.avatar,
+          verified: post.user.verified,
+          exchange: post.user.exchange,
+          winRate: post.user.winRate?.toString(),
+          pnl: post.user.pnl,
+          pnlPositive: post.user.pnlPositive,
+        }).onConflictDoUpdate({
+          target: profiles.id,
+          set: {
+            username: post.user.username || 'user',
+            displayName: post.user.displayName,
+            avatarUrl: post.user.avatar,
+          }
+        });
       }
-    };
 
-    posts.unshift(rawPost);
-    saveStoredPosts(posts);
+      const rawPostId = `pg_${Date.now()}__${Math.random().toString(36).slice(2, 9)}`;
 
-    res.status(201).json(rawPost);
+      const newPost = await db.insert(posts).values({
+        id: rawPostId,
+        userId: userId,
+        coin: post.coin,
+        coinName: post.coinName,
+        direction: post.direction,
+        target: post.target,
+        timeframe: post.timeframe,
+        text: post.text,
+        chartData: post.chartData,
+        images: post.images,
+        currentPrice: post.currentPrice,
+        priceChange: post.priceChange,
+        positive: post.positive,
+        accuracy: post.accuracy,
+        likesCount: post.likes || 0,
+        commentsCount: post.comments || 0,
+        repostsCount: post.reposts || 0,
+      }).returning();
+
+      res.status(201).json({ id: newPost[0].id, success: true });
+    } catch (error: any) {
+      console.error("Error inserting post:", error);
+      res.status(500).json({ error: "Failed to insert post" });
+    }
   });
 
   // Vite middleware for development
